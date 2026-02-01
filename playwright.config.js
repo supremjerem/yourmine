@@ -20,9 +20,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'cd frontend && npm run dev',
+      command: 'npm run dev',
       url: 'http://localhost:3000',
       reuseExistingServer: true,
+      cwd: './frontend',
     },
     {
       command: 'venv/bin/python3 backend/api.py',
