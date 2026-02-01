@@ -1,31 +1,59 @@
 """
-YouTube downloader module - Core download logic
+YouTube downloader module - Core download logic.
+
+This module provides functionality to download YouTube videos and convert
+them to various audio formats using yt-dlp.
 """
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Callable, Dict, Optional
+
 import yt_dlp
 
 
-DEFAULT_MP3_QUALITY = "192"
+DEFAULT_MP3_QUALITY: str = "192"
 
 
 def download_audio(
     youtube_url: str,
     output_dir: str = ".",
     audio_format: str = "mp3",
-    progress_callback: Optional[Callable] = None
-) -> dict:
+    progress_callback: Optional[Callable[[Dict], None]] = None
+) -> Dict[str, str | bool]:
     """
-    Downloads a YouTube video and converts it to the specified audio format
-    
+    Download a YouTube video and convert it to the specified audio format.
+
+    Downloads the audio track from a YouTube video and converts it to either
+    MP3 (lossy, smaller file size) or WAV (lossless, larger file size) format.
+
     Args:
-        youtube_url: The YouTube video URL
-        output_dir: The output directory (default: current directory)
-        audio_format: Audio format (mp3 or wav, default: mp3)
-        progress_callback: Optional callback for progress updates
-    
+        youtube_url: The YouTube video URL to download.
+        output_dir: The output directory for the downloaded file.
+            Defaults to current directory.
+        audio_format: Target audio format, either 'mp3' or 'wav'.
+            Defaults to 'mp3'.
+        progress_callback: Optional callback function that receives progress
+            updates as a dictionary with 'status', 'percent', 'speed', etc.
+
     Returns:
-        dict with status, title, and file path
+        A dictionary containing:
+            - success (bool): Whether the download was successful.
+            - title (str): Video title (if successful).
+            - filename (str): Output filename (if successful).
+            - format (str): Audio format used (if successful).
+            - error (str): Error message (if failed).
+            - url (str): The original URL (if failed).
+
+    Raises:
+        No exceptions are raised; errors are returned in the result dict.
+
+    Example:
+        >>> result = download_audio(
+        ...     "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        ...     output_dir="~/Music",
+        ...     audio_format="mp3"
+        ... )
+        >>> if result['success']:
+        ...     print(f"Downloaded: {result['title']}")
     """
     # Configuration based on format
     if audio_format == "wav":

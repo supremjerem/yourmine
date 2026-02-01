@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Yourmine - YouTube Audio Converter
-Usage: python yourmine.py <YOUTUBE_URL> [--format mp3|wav]
+Yourmine - YouTube Audio Converter.
+
+A command-line tool for downloading YouTube videos and converting them
+to audio formats (MP3 or WAV).
+
+Usage:
+    python yourmine.py <YOUTUBE_URL> [--format mp3|wav]
+    python yourmine.py --file urls.txt [--format wav] [--workers 5]
 """
 
-import sys
 import argparse
-from pathlib import Path
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 try:
     import yt_dlp
@@ -19,15 +25,23 @@ except ImportError:
 DEFAULT_MP3_QUALITY = "192"
 
 
-def download_audio(youtube_url: str, output_dir: str = ".", audio_format: str = "mp3", index: int = None) -> bool:
+def download_audio(
+    youtube_url: str,
+    output_dir: str = ".",
+    audio_format: str = "mp3",
+    index: Optional[int] = None
+) -> bool:
     """
-    Downloads a YouTube video and converts it to the specified audio format
-    
+    Download a YouTube video and convert it to the specified audio format.
+
     Args:
-        youtube_url: The YouTube video URL
-        output_dir: The output directory (default: current directory)
-        audio_format: Audio format (mp3 or wav, default: mp3)
-        index: Optional index for batch downloads
+        youtube_url: The YouTube video URL to download.
+        output_dir: The output directory. Defaults to current directory.
+        audio_format: Audio format ('mp3' or 'wav'). Defaults to 'mp3'.
+        index: Optional index for batch downloads to track progress.
+
+    Returns:
+        True if download was successful, False otherwise.
     """
     # Configuration based on format
     if audio_format == "wav":
@@ -73,13 +87,19 @@ def download_audio(youtube_url: str, output_dir: str = ".", audio_format: str = 
 
 def read_urls_from_file(file_path: str) -> List[str]:
     """
-    Reads YouTube URLs from a text file (one URL per line)
-    
+    Read YouTube URLs from a text file.
+
+    Reads one URL per line, skipping empty lines and comments (lines
+    starting with '#').
+
     Args:
-        file_path: Path to the text file containing URLs
-    
+        file_path: Path to the text file containing URLs.
+
     Returns:
-        List of YouTube URLs
+        List of YouTube URLs found in the file.
+
+    Exits:
+        Exits with code 1 if the file is not found or cannot be read.
     """
     urls = []
     try:
@@ -99,18 +119,26 @@ def read_urls_from_file(file_path: str) -> List[str]:
     return urls
 
 
-def download_batch(urls: List[str], output_dir: str, audio_format: str, max_workers: int = 3) -> Tuple[int, int]:
+def download_batch(
+    urls: List[str],
+    output_dir: str,
+    audio_format: str,
+    max_workers: int = 3
+) -> Tuple[int, int]:
     """
-    Downloads multiple YouTube videos in parallel
-    
+    Download multiple YouTube videos in parallel.
+
+    Uses a thread pool to download multiple videos concurrently,
+    improving throughput for batch operations.
+
     Args:
-        urls: List of YouTube URLs
-        output_dir: Output directory
-        audio_format: Audio format (mp3 or wav)
-        max_workers: Maximum number of parallel downloads
-    
+        urls: List of YouTube URLs to download.
+        output_dir: Output directory for all downloaded files.
+        audio_format: Audio format for all downloads ('mp3' or 'wav').
+        max_workers: Maximum number of parallel downloads. Defaults to 3.
+
     Returns:
-        Tuple of (successful_downloads, total_downloads)
+        A tuple of (successful_downloads, total_downloads).
     """
     print(f"\n📥 Starting batch download of {len(urls)} videos...")
     print(f"Format: {audio_format.upper()} | Workers: {max_workers}\n")
@@ -137,7 +165,12 @@ def download_batch(urls: List[str], output_dir: str, audio_format: str, max_work
 
 
 def main() -> None:
-    """Main script entry point."""
+    """
+    Main script entry point.
+
+    Parses command-line arguments and dispatches to either single
+    download or batch download mode based on the provided options.
+    """
     parser = argparse.ArgumentParser(
         description='Yourmine - YouTube Audio Converter',
         formatter_class=argparse.RawDescriptionHelpFormatter,

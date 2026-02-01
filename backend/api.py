@@ -11,8 +11,12 @@ from pathlib import Path
 import uuid
 from datetime import datetime
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import sys
 import os
+
+# Thread pool for parallel downloads
+download_executor = ThreadPoolExecutor(max_workers=5)
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -33,13 +37,17 @@ app.add_middleware(
 # Storage for download jobs
 downloads = {}
 
-# Determine output directory with fallback options
-def get_output_directory():
+def get_output_directory() -> Path:
     """
-    Get the best available directory for downloads:
-    1. ~/Downloads (create if doesn't exist)
-    2. ~/Desktop (if exists)
-    3. ~/ (home directory as last resort)
+    Get the best available directory for downloads.
+
+    Tries directories in order of preference:
+        1. ~/Downloads (creates if doesn't exist)
+        2. ~/Desktop (if exists and writable)
+        3. ~/ (home directory as last resort)
+
+    Returns:
+        Path: The path to the selected output directory.
     """
     # Try Downloads folder first
     downloads_dir = Path.home() / "Downloads"
@@ -98,15 +106,30 @@ class DownloadStatus(BaseModel):
 
 
 @app.get("/")
-def root():
-    """Health check endpoint"""
+def root() -> dict:
+    """
+    Health check endpoint.
+
+    Returns:
+        dict: Status message indicating the API is running.
+    """
     return {"status": "ok", "message": "Yourmine API is running"}
 
 
 @app.post("/download", response_model=DownloadStatus)
-async def create_download(request: DownloadRequest, background_tasks: BackgroundTasks):
+async def create_download(
+    request: DownloadRequest,
+    background_tasks: BackgroundTasks
+) -> dict:
     """
-    Start a single video download
+    Start a single video download.
+
+    Args:
+        request: The download request containing URL and format.
+        background_tasks: FastAPI background tasks handler.
+
+    Returns:
+        dict: The created download job with status information.
     """
     download_id = str(uuid.uuid4())
     
@@ -127,9 +150,19 @@ async def create_download(request: DownloadRequest, background_tasks: Background
 
 
 @app.post("/download/batch")
-async def create_batch_download(request: BatchDownloadRequest, background_tasks: BackgroundTasks):
+async def create_batch_download(
+    request: BatchDownloadRequest,
+    background_tasks: BackgroundTasks
+) -> dict:
     """
-    Start multiple video downloads
+    Start multiple video downloads in parallel.
+
+    Args:
+        request: The batch download request containing URLs and format.
+        background_tasks: FastAPI background tasks handler.
+
+    Returns:
+        dict: Batch information with download IDs and total count.
     """
     download_ids = []
     
@@ -144,9 +177,10 @@ async def create_batch_download(request: BatchDownloadRequest, background_tasks:
             'progress': None
         }
         download_ids.append(download_id)
-        
-        # Start download in background
-        background_tasks.add_task(process_download, download_id, str(url), request.format)
+    
+    # Start all downloads in parallel using asyncio.create_task
+    for download_id, url in zip(download_ids, request.urls):
+        asyncio.create_task(process_download(download_id, str(url), request.format))
     
     return {
         'batch_id': str(uuid.uuid4()),
@@ -156,9 +190,12 @@ async def create_batch_download(request: BatchDownloadRequest, background_tasks:
 
 
 @app.get("/downloads")
-async def list_downloads():
+async def list_downloads() -> dict:
     """
-    List all downloads
+    List all downloads.
+
+    Returns:
+        dict: All download jobs with their current status and total count.
     """
     return {
         'downloads': list(downloads.values()),
@@ -166,9 +203,17 @@ async def list_downloads():
     }
 
 
-async def process_download(download_id: str, url: str, audio_format: str):
+async def process_download(download_id: str, url: str, audio_format: str) -> None:
     """
-    Background task to process a download
+    Background task to process a download.
+
+    Downloads the video from the given URL and converts it to the specified
+    audio format. Updates the download status throughout the process.
+
+    Args:
+        download_id: Unique identifier for this download job.
+        url: The YouTube video URL to download.
+        audio_format: Target audio format (mp3 or wav).
     """
     def update_progress(progress_data):
         if download_id in downloads:
