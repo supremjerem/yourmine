@@ -1,0 +1,120 @@
+"""
+YouTube downloader module - Core download logic
+"""
+from pathlib import Path
+from typing import Optional, Callable
+import yt_dlp
+
+
+DEFAULT_MP3_QUALITY = "192"
+
+
+def download_audio(
+    youtube_url: str,
+    output_dir: str = ".",
+    audio_format: str = "mp3",
+    progress_callback: Optional[Callable] = None
+) -> dict:
+    """
+    Downloads a YouTube video and converts it to the specified audio format
+    
+    Args:
+        youtube_url: The YouTube video URL
+        output_dir: The output directory (default: current directory)
+        audio_format: Audio format (mp3 or wav, default: mp3)
+        progress_callback: Optional callback for progress updates
+    
+    Returns:
+        dict with status, title, and file path
+    """
+    # Configuration based on format
+    if audio_format == "wav":
+        postprocessors = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'wav',
+        }]
+    else:  # mp3
+        postprocessors = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': DEFAULT_MP3_QUALITY,
+        }]
+
+    # Progress hook for downloading
+    download_complete = False
+    
+    def progress_hook(d):
+        nonlocal download_complete
+        if progress_callback and d['status'] == 'downloading':
+            progress_callback({
+                'status': 'downloading',
+                'percent': d.get('_percent_str', '0%'),
+                'speed': d.get('_speed_str', 'N/A'),
+                'eta': d.get('_eta_str', 'N/A')
+            })
+        elif d['status'] == 'finished':
+            download_complete = True
+            if progress_callback:
+                progress_callback({
+                    'status': 'converting',
+                    'percent': '10%',
+                    'message': 'Starting conversion...'
+                })
+    
+    # Post-processor hook for conversion
+    def postprocessor_hook(d):
+        if progress_callback and download_complete:
+            if d['status'] == 'started':
+                progress_callback({
+                    'status': 'converting',
+                    'percent': '50%',
+                    'message': 'Converting to audio...'
+                })
+
+    # Configuration for yt-dlp
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'postprocessors': postprocessors,
+        'outtmpl': str(Path(output_dir) / '%(title)s.%(ext)s'),
+        'quiet': True,
+        'no_warnings': True,
+        'noplaylist': True,
+        'progress_hooks': [progress_hook],
+        'postprocessor_hooks': [postprocessor_hook],
+    }
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            if progress_callback:
+                progress_callback({'status': 'extracting', 'url': youtube_url})
+            
+            info = ydl.extract_info(youtube_url, download=True)
+            filename = f"{info['title']}.{audio_format}"
+            
+            if progress_callback:
+                progress_callback({'status': 'complete', 'title': info['title']})
+            
+            return {
+                'success': True,
+                'title': info['title'],
+                'filename': filename,
+                'format': audio_format
+            }
+    except yt_dlp.utils.DownloadError as e:
+        return {
+            'success': False,
+            'error': f"Download error: {str(e)}",
+            'url': youtube_url
+        }
+    except yt_dlp.utils.ExtractorError as e:
+        return {
+            'success': False,
+            'error': f"Extractor error: {str(e)}",
+            'url': youtube_url
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f"Unexpected error: {str(e)}",
+            'url': youtube_url
+        }
