@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: yourmine-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount Downloads folder for direct file access
+      - ~/Downloads:/root/Downloads
+      - ./backend:/app/backend
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - yourmine-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: yourmine-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    restart: unless-stopped
+    networks:
+      - yourmine-network
+
+networks:
+  yourmine-network:
+    driver: bridge
