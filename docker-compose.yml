@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    image: ghcr.io/supremjerem/yourmine-backend:latest
     container_name: yourmine-backend
     ports:
       - "8000:8000"
@@ -22,6 +23,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    image: ghcr.io/supremjerem/yourmine-frontend:latest
     container_name: yourmine-frontend
     ports:
       - "3000:3000"
