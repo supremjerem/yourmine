@@ -4,12 +4,12 @@ Web interface for downloading audio from YouTube videos and playlists.
 
 ## Features
 
-- 🎵 Download audio from YouTube videos
-- 📋 Batch download from playlists
-- 📊 Real-time progress tracking
-- 🔄 Conversion status monitoring
-- 📁 Direct download to ~/Downloads folder
-- 🧪 Full E2E test coverage (17 tests)
+- Download audio from YouTube videos
+- Batch download from playlists
+- Real-time progress tracking
+- Conversion status monitoring
+- Direct download to ~/Downloads folder
+- Full E2E test coverage (17 tests)
 
 ## Quick Start with Docker
 
@@ -17,13 +17,16 @@ The easiest way to run YourMine is with Docker Compose:
 
 ```bash
 # Start the application
-docker-compose up
+docker compose up
+
+# Rebuild after changes
+docker compose up --build
 ```
 
 To stop the application:
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## Development Setup (without Docker)
@@ -67,9 +70,32 @@ npx playwright test --ui
 ## Tech Stack
 
 - **Backend**: FastAPI, yt-dlp, Python 3.11
-- **Frontend**: React 18, Vite 5
-- **Testing**: Playwright
+- **Frontend**: React 18, TypeScript, Vite 5
+- **Testing**: Playwright (TypeScript)
 - **Containerization**: Docker, Docker Compose
+
+## Project Structure
+
+```
+yourmine/
+├── backend/
+│   ├── api.py              # FastAPI application and REST endpoints
+│   └── downloader.py       # Core download and conversion logic
+├── frontend/
+│   └── src/
+│       ├── components/     # React UI components (TSX)
+│       ├── hooks/          # Custom React hooks (TS)
+│       ├── types.ts        # Shared TypeScript type definitions
+│       ├── App.tsx         # Main application component
+│       └── main.tsx        # Entry point
+├── tests/
+│   └── e2e/                # Playwright E2E tests (TS)
+├── yourmine.py             # CLI tool
+├── docker-compose.yml      # Docker orchestration
+├── Dockerfile.backend      # Backend Docker image
+├── Dockerfile.frontend     # Frontend Docker image
+└── requirements.txt        # Python dependencies
+```
 
 ## Architecture
 
@@ -80,33 +106,13 @@ npx playwright test --ui
 
 ## API Endpoints
 
-- `POST /download` - Download single video
-- `POST /download/batch` - Download playlist
-- `GET /downloads` - Get all downloads status
-
-See full API documentation at http://localhost:8000/docs
-
-## License
-
-MIT
-│   └── downloader.py    # Download logic
-├── frontend/            # React frontend
-│   └── src/
-├── yourmine.py          # CLI tool
-└── requirements.txt     # Python dependencies
-```
-
-## API Endpoints
-
 - `POST /download` - Start a single download
 - `POST /download/batch` - Start batch downloads
-- `GET /download/{id}` - Get download status
-- `GET /downloads` - List all downloads
-- `GET /download/{id}/file` - Download the file
+- `GET /downloads` - List all downloads with status
 
 Full API documentation: http://localhost:8000/docs
 
-## Examples
+## CLI Usage
 
 Download to current directory as MP3:
 ```bash
@@ -118,14 +124,17 @@ Download to specific folder as WAV:
 python yourmine.py https://youtu.be/dQw4w9WgXcQ --output ~/Music --format wav
 ```
 
-## Supported URL formats
+Batch download from file:
+```bash
+python yourmine.py --file urls.txt --format wav --workers 5
+```
+
+## Supported URL Formats
 
 - `https://www.youtube.com/watch?v=VIDEO_ID`
 - `https://youtu.be/VIDEO_ID`
 - `https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID`
 
-## Notes
+## License
 
-- Default audio quality is 192 kbps
-- The MP3 file will be automatically named based on the video title
-- FFmpeg must be installed for conversion to work
+MIT
