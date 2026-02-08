@@ -26,7 +26,6 @@ test.describe('Batch Download Tests', () => {
     await test.step('Verify batch downloads started', async () => {
       await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5000 });
       await expect(page.locator('.toast-success')).toContainText('downloads started!');
-      await page.waitForTimeout(2000);
       const downloadCards = page.locator('.download-card');
       await expect(downloadCards.first()).toBeVisible({ timeout: 10000 });
     });
@@ -58,9 +57,8 @@ test.describe('Batch Download Tests', () => {
     await test.step('Verify batch downloads started with correct format', async () => {
       await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5000 });
       await expect(page.locator('.toast-success')).toContainText('downloads started!');
-      await expect(page.locator('.download-card').first()).toBeVisible({ timeout: 15000 });
-      await page.waitForTimeout(2000);
       const downloadCards = page.locator('.download-card');
+      await expect(downloadCards.first()).toBeVisible({ timeout: 15000 });
       const count = await downloadCards.count();
       expect(count).toBeGreaterThanOrEqual(1);
     });

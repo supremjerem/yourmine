@@ -22,9 +22,8 @@ test.describe('Single Download Tests', () => {
 
     await test.step('Verify download card is created', async () => {
       await expect(page.locator('.download-card').first()).toBeVisible({ timeout: 10000 });
-      await page.waitForTimeout(3000);
       const statusBadge = page.locator('.status-badge').first();
-      await expect(statusBadge).toBeVisible();
+      await expect(statusBadge).toBeVisible({ timeout: 5000 });
     });
   });
 

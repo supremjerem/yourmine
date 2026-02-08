@@ -321,19 +321,6 @@
   margin-bottom: 10px;
 }
 
-.progress-info {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 0.85rem;
-  color: #666;
-  margin-top: 10px;
-  padding: 10px;
-  background: #f0f7ff;
-  border-radius: 6px;
-  border-left: 3px solid #2196F3;
-}
-
 .progress-container {
   margin-top: 12px;
   margin-bottom: 8px;
@@ -408,22 +395,3 @@
   border-radius: 6px;
 }
 
-.download-btn {
-  width: 100%;
-  margin-top: auto;
-  padding: 12px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  align-self: flex-end;
-}
-
-.download-btn:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}

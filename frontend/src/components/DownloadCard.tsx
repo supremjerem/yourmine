@@ -1,4 +1,5 @@
-import { useDownloadStatus } from '../hooks'
+import { memo } from 'react'
+import { parsePercent, cleanSpeed, getStatusColor, getStatusIcon } from '../utils/downloadStatus'
 import type { Download } from '../types'
 
 interface DownloadCardProps {
@@ -6,8 +7,6 @@ interface DownloadCardProps {
 }
 
 function DownloadCard({ download }: DownloadCardProps) {
-  const { parsePercent, cleanSpeed, getStatusColor, getStatusIcon } = useDownloadStatus()
-
   return (
     <div className="download-card">
       <div className="download-header">
@@ -59,4 +58,4 @@ function DownloadCard({ download }: DownloadCardProps) {
   )
 }
 
-export default DownloadCard
+export default memo(DownloadCard)

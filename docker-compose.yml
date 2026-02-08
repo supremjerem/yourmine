@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -10,12 +8,17 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount Downloads folder for direct file access
       - ~/Downloads:/root/Downloads
       - ./backend:/app/backend
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - yourmine-network
 
@@ -31,10 +34,17 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       - VITE_API_URL=http://localhost:8000
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     networks:
       - yourmine-network
 

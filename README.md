@@ -85,6 +85,7 @@ yourmine/
 │   └── src/
 │       ├── components/     # React UI components (TSX)
 │       ├── hooks/          # Custom React hooks (TS)
+│       ├── utils/          # Utility functions (TS)
 │       ├── types.ts        # Shared TypeScript type definitions
 │       ├── App.tsx         # Main application component
 │       └── main.tsx        # Entry point
