@@ -17,7 +17,7 @@ test.describe('UI & Navigation Tests', () => {
     await test.step('Verify mode toggle buttons are visible', async () => {
       const singleBtn = page.getByRole('button', { name: 'Single download mode' });
       const batchBtn = page.getByRole('button', { name: 'Batch download mode' });
-      
+
       await expect(singleBtn).toBeVisible();
       await expect(batchBtn).toBeVisible();
     });
@@ -32,7 +32,7 @@ test.describe('UI & Navigation Tests', () => {
     await test.step('Verify format radio buttons are visible', async () => {
       const mp3Radio = page.getByRole('radio', { name: 'MP3 lossy format' });
       const wavRadio = page.getByRole('radio', { name: 'WAV lossless format' });
-      
+
       await expect(mp3Radio).toBeVisible();
       await expect(wavRadio).toBeVisible();
     });
@@ -119,7 +119,7 @@ test.describe('UI & Navigation Tests', () => {
     await test.step('Verify ARIA groups are present', async () => {
       const modeToggle = page.locator('[role="group"][aria-label="Download mode selection"]');
       await expect(modeToggle).toBeVisible();
-      
+
       const formatSelector = page.locator('[role="group"][aria-label="Audio format selection"]');
       await expect(formatSelector).toBeVisible();
     });

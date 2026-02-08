@@ -10,16 +10,16 @@ test.describe('Single Download Tests', () => {
     await test.step('Enter YouTube URL and click download', async () => {
       const urlInput = page.getByLabel('YouTube URL input');
       const downloadBtn = page.getByRole('button', { name: 'Download', exact: true });
-      
+
       await urlInput.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
       await downloadBtn.click();
     });
-    
+
     await test.step('Verify download started toast appears', async () => {
       await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5000 });
       await expect(page.locator('.toast-success')).toContainText('Download started!');
     });
-    
+
     await test.step('Verify download card is created', async () => {
       await expect(page.locator('.download-card').first()).toBeVisible({ timeout: 10000 });
       await page.waitForTimeout(3000);
@@ -34,15 +34,15 @@ test.describe('Single Download Tests', () => {
       await wavRadio.click();
       await expect(wavRadio).toBeChecked();
     });
-    
+
     await test.step('Enter YouTube URL and start download', async () => {
       const urlInput = page.getByLabel('YouTube URL input');
       const downloadBtn = page.getByRole('button', { name: 'Download', exact: true });
-      
+
       await urlInput.fill('https://www.youtube.com/watch?v=9bZkp7q19f0');
       await downloadBtn.click();
     });
-    
+
     await test.step('Verify download started with WAV format', async () => {
       await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5000 });
       await expect(page.locator('.download-card').first()).toBeVisible({ timeout: 10000 });
@@ -54,11 +54,11 @@ test.describe('Single Download Tests', () => {
     await test.step('Start a download', async () => {
       const urlInput = page.getByLabel('YouTube URL input');
       const downloadBtn = page.getByRole('button', { name: 'Download', exact: true });
-      
+
       await urlInput.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
       await downloadBtn.click();
     });
-    
+
     await test.step('Verify progress bar appears with correct attributes', async () => {
       await expect(page.locator('.download-card').first()).toBeVisible({ timeout: 10000 });
       const progressBar = page.locator('.progress-bar-wrapper').first();
@@ -71,7 +71,7 @@ test.describe('Single Download Tests', () => {
     await test.step('Start a download', async () => {
       const urlInput = page.getByLabel('YouTube URL input');
       const downloadBtn = page.getByRole('button', { name: 'Download', exact: true });
-      
+
       await urlInput.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
       await downloadBtn.click();
     });
@@ -80,13 +80,13 @@ test.describe('Single Download Tests', () => {
       await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5000 });
       await expect(page.locator('.download-card').first()).toBeVisible({ timeout: 10000 });
     });
-    
+
     await test.step('Wait for download completion', async () => {
       await expect(
         page.locator('.toast-success').filter({ hasText: /downloaded to your Downloads folder/i })
       ).toBeVisible({ timeout: 60000 });
     });
-    
+
     await test.step('Verify download appears in history', async () => {
       const historyTab = page.getByRole('button', { name: /Download history/ });
       await expect(historyTab).toContainText(/History \(\d+\)/);

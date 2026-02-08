@@ -18,17 +18,8 @@ test.describe('Feedback & Validation Tests', () => {
       await expect(page.locator('.toast-success')).toBeVisible({ timeout: 5000 });
     });
 
-    await test.step('Wait for download to fail and check in History tab', async () => {
-      // Failed downloads go to History tab automatically
-      // Wait a bit for the download to fail
-      await page.waitForTimeout(10000);
-      
-      // Switch to history tab to see failed downloads
-      const historyTab = page.getByRole('button', { name: /Download history/ });
-      await historyTab.click();
-      
-      // Verify at least one download shows failed status (use .first() to avoid strict mode violation)
-      await expect(page.locator('.status-badge').filter({ hasText: 'failed' }).first()).toBeVisible({ timeout: 15000 });
+    await test.step('Wait for download to fail in Current tab', async () => {
+      await expect(page.locator('.status-badge').filter({ hasText: 'failed' }).first()).toBeVisible({ timeout: 30000 });
       await expect(page.locator('.error-message').first()).toBeVisible();
     });
   });
@@ -62,7 +53,6 @@ test.describe('Feedback & Validation Tests', () => {
     await test.step('Refresh and verify downloads persist in History tab', async () => {
       await page.reload();
       await page.waitForLoadState('networkidle');
-      // After refresh, downloads from previous session appear in History tab
       const historyTab = page.getByRole('button', { name: 'History' });
       await historyTab.click();
       const downloadCards = page.locator('.download-card');

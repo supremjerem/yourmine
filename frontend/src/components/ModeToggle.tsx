@@ -1,18 +1,11 @@
-/**
- * Mode toggle component.
- *
- * Toggle buttons for switching between single and batch download modes.
- */
-import PropTypes from 'prop-types'
+import type { DownloadMode } from '../types'
 
-/**
- * Download mode toggle buttons.
- *
- * @param {Object} props - Component props
- * @param {string} props.mode - Currently selected mode ('single' or 'batch')
- * @param {Function} props.onModeChange - Callback when mode changes
- */
-function ModeToggle({ mode, onModeChange }) {
+interface ModeToggleProps {
+  mode: DownloadMode
+  onModeChange: (mode: DownloadMode) => void
+}
+
+function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
     <div
       className="mode-toggle"
@@ -39,11 +32,6 @@ function ModeToggle({ mode, onModeChange }) {
       </button>
     </div>
   )
-}
-
-ModeToggle.propTypes = {
-  mode: PropTypes.oneOf(['single', 'batch']).isRequired,
-  onModeChange: PropTypes.func.isRequired
 }
 
 export default ModeToggle

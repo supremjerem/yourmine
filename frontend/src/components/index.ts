@@ -1,8 +1,3 @@
-/**
- * Components barrel export.
- *
- * Re-exports all components for convenient imports.
- */
 export { default as Toast } from './Toast'
 export { default as DownloadCard } from './DownloadCard'
 export { default as FormatSelector } from './FormatSelector'

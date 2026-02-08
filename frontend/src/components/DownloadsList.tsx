@@ -1,28 +1,21 @@
-/**
- * Downloads list component.
- *
- * Displays a list of downloads with current/history tabs.
- */
-import PropTypes from 'prop-types'
 import DownloadCard from './DownloadCard'
+import type { Download, ViewMode } from '../types'
 
-/**
- * Downloads list with tabs and clear history functionality.
- *
- * @param {Object} props - Component props
- * @param {string} props.viewMode - Current view ('current' or 'history')
- * @param {Array} props.currentDownloads - Active downloads
- * @param {Array} props.historyDownloads - Completed/failed downloads
- * @param {Function} props.onViewModeChange - Callback when view mode changes
- * @param {Function} props.onClearHistory - Callback to clear history
- */
+interface DownloadsListProps {
+  viewMode: ViewMode
+  currentDownloads: Download[]
+  historyDownloads: Download[]
+  onViewModeChange: (mode: ViewMode) => void
+  onClearHistory: () => void
+}
+
 function DownloadsList({
   viewMode,
   currentDownloads,
   historyDownloads,
   onViewModeChange,
   onClearHistory
-}) {
+}: DownloadsListProps) {
   const displayedDownloads = viewMode === 'current' ? currentDownloads : historyDownloads
 
   return (
@@ -79,14 +72,6 @@ function DownloadsList({
       )}
     </div>
   )
-}
-
-DownloadsList.propTypes = {
-  viewMode: PropTypes.oneOf(['current', 'history']).isRequired,
-  currentDownloads: PropTypes.arrayOf(PropTypes.object).isRequired,
-  historyDownloads: PropTypes.arrayOf(PropTypes.object).isRequired,
-  onViewModeChange: PropTypes.func.isRequired,
-  onClearHistory: PropTypes.func.isRequired
 }
 
 export default DownloadsList

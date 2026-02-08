@@ -1,10 +1,5 @@
-/**
- * Yourmine - YouTube Audio Downloader
- *
- * Main application component that orchestrates the download
- * functionality using modular components and custom hooks.
- */
 import { useState, useCallback } from 'react'
+import type { FormEvent } from 'react'
 import { useToast, useDownloads } from './hooks'
 import {
   Toast,
@@ -13,25 +8,16 @@ import {
   DownloadForm,
   DownloadsList
 } from './components'
+import type { AudioFormat, DownloadMode, ViewMode } from './types'
 import './App.css'
 
-/**
- * Main application component.
- *
- * Provides the user interface for downloading YouTube videos
- * as audio files in MP3 or WAV format.
- *
- * @returns {JSX.Element} The rendered application
- */
 function App() {
-  // Form state
   const [url, setUrl] = useState('')
   const [urls, setUrls] = useState('')
-  const [format, setFormat] = useState('mp3')
-  const [mode, setMode] = useState('single')
-  const [viewMode, setViewMode] = useState('current')
+  const [format, setFormat] = useState<AudioFormat>('mp3')
+  const [mode, setMode] = useState<DownloadMode>('single')
+  const [viewMode, setViewMode] = useState<ViewMode>('current')
 
-  // Custom hooks
   const { toast, showToast } = useToast()
   const {
     loading,
@@ -42,12 +28,7 @@ function App() {
     clearHistory
   } = useDownloads(showToast)
 
-  /**
-   * Handle single download form submission.
-   *
-   * @param {React.FormEvent} e - Form event
-   */
-  const handleSingleDownload = useCallback(async (e) => {
+  const handleSingleDownload = useCallback(async (e: FormEvent) => {
     e.preventDefault()
     if (!url.trim()) return
 
@@ -57,12 +38,7 @@ function App() {
     }
   }, [url, format, startSingleDownload])
 
-  /**
-   * Handle batch download form submission.
-   *
-   * @param {React.FormEvent} e - Form event
-   */
-  const handleBatchDownload = useCallback(async (e) => {
+  const handleBatchDownload = useCallback(async (e: FormEvent) => {
     e.preventDefault()
     const urlList = urls.split('\n')
       .map(u => u.trim())
@@ -78,11 +54,10 @@ function App() {
 
   return (
     <div className="app">
-      {/* Toast Notification */}
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       <header className="header">
-        <h1>🎵 Yourmine</h1>
+        <h1>Yourmine</h1>
         <p>YouTube Audio Downloader</p>
       </header>
 

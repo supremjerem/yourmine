@@ -1,19 +1,11 @@
-/**
- * Download card component.
- *
- * Displays information about a single download including status,
- * title, progress, and any errors.
- */
-import PropTypes from 'prop-types'
 import { useDownloadStatus } from '../hooks'
+import type { Download } from '../types'
 
-/**
- * Individual download card display.
- *
- * @param {Object} props - Component props
- * @param {Object} props.download - Download data object
- */
-function DownloadCard({ download }) {
+interface DownloadCardProps {
+  download: Download
+}
+
+function DownloadCard({ download }: DownloadCardProps) {
   const { parsePercent, cleanSpeed, getStatusColor, getStatusIcon } = useDownloadStatus()
 
   return (
@@ -41,8 +33,8 @@ function DownloadCard({ download }) {
               className="progress-bar-wrapper"
               role="progressbar"
               aria-valuenow={parseFloat(parsePercent(download.progress.percent))}
-              aria-valuemin="0"
-              aria-valuemax="100"
+              aria-valuemin={0}
+              aria-valuemax={100}
               aria-label={`Download progress: ${parsePercent(download.progress.percent)}`}
             >
               <div
@@ -65,33 +57,6 @@ function DownloadCard({ download }) {
       </div>
     </div>
   )
-}
-
-DownloadCard.propTypes = {
-  download: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    status: PropTypes.oneOf([
-      'queued',
-      'processing',
-      'extracting',
-      'downloading',
-      'converting',
-      'completed',
-      'failed'
-    ]).isRequired,
-    url: PropTypes.string.isRequired,
-    format: PropTypes.oneOf(['mp3', 'wav']).isRequired,
-    title: PropTypes.string,
-    filename: PropTypes.string,
-    error: PropTypes.string,
-    progress: PropTypes.shape({
-      status: PropTypes.string,
-      percent: PropTypes.string,
-      speed: PropTypes.string,
-      eta: PropTypes.string
-    }),
-    created_at: PropTypes.string
-  }).isRequired
 }
 
 export default DownloadCard

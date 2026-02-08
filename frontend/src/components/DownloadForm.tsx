@@ -1,22 +1,16 @@
-/**
- * Download form component.
- *
- * Form for entering YouTube URLs for single or batch downloads.
- */
-import PropTypes from 'prop-types'
+import type { FormEvent } from 'react'
+import type { DownloadMode } from '../types'
 
-/**
- * Download form for URL input.
- *
- * @param {Object} props - Component props
- * @param {string} props.mode - Download mode ('single' or 'batch')
- * @param {string} props.url - Single URL input value
- * @param {string} props.urls - Batch URLs input value
- * @param {boolean} props.loading - Whether a download is in progress
- * @param {Function} props.onUrlChange - Callback for single URL changes
- * @param {Function} props.onUrlsChange - Callback for batch URLs changes
- * @param {Function} props.onSubmit - Form submission handler
- */
+interface DownloadFormProps {
+  mode: DownloadMode
+  url: string
+  urls: string
+  loading: boolean
+  onUrlChange: (url: string) => void
+  onUrlsChange: (urls: string) => void
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void
+}
+
 function DownloadForm({
   mode,
   url,
@@ -25,7 +19,7 @@ function DownloadForm({
   onUrlChange,
   onUrlsChange,
   onSubmit
-}) {
+}: DownloadFormProps) {
   const isSingleMode = mode === 'single'
   const isDisabled = loading || (isSingleMode ? !url.trim() : !urls.trim())
 
@@ -56,16 +50,6 @@ function DownloadForm({
       </button>
     </form>
   )
-}
-
-DownloadForm.propTypes = {
-  mode: PropTypes.oneOf(['single', 'batch']).isRequired,
-  url: PropTypes.string.isRequired,
-  urls: PropTypes.string.isRequired,
-  loading: PropTypes.bool.isRequired,
-  onUrlChange: PropTypes.func.isRequired,
-  onUrlsChange: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired
 }
 
 export default DownloadForm
