@@ -2,11 +2,11 @@ import DownloadCard from './DownloadCard'
 import type { Download, ViewMode } from '../types'
 
 interface DownloadsListProps {
-  viewMode: ViewMode
-  currentDownloads: Download[]
-  historyDownloads: Download[]
-  onViewModeChange: (mode: ViewMode) => void
-  onClearHistory: () => void
+  readonly viewMode: ViewMode
+  readonly currentDownloads: Download[]
+  readonly historyDownloads: Download[]
+  readonly onViewModeChange: (mode: ViewMode) => void
+  readonly onClearHistory: () => void
 }
 
 function DownloadsList({
@@ -22,7 +22,7 @@ function DownloadsList({
     <div className="downloads-list">
       <div className="downloads-header">
         <h2>Downloads</h2>
-        <div className="view-toggle" role="group" aria-label="Downloads view selection">
+        <fieldset className="view-toggle" aria-label="Downloads view selection">
           <button
             className={viewMode === 'current' ? 'active' : ''}
             onClick={() => onViewModeChange('current')}
@@ -41,7 +41,7 @@ function DownloadsList({
           >
             History ({historyDownloads.length})
           </button>
-        </div>
+        </fieldset>
       </div>
 
       {viewMode === 'history' && historyDownloads.length > 0 && (

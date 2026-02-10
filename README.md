@@ -2,14 +2,20 @@
 
 Web interface for downloading audio from YouTube videos and playlists.
 
+![Yourmine UI](docs/screenshot.png)
+
 ## Features
 
 - Download audio from YouTube videos
 - Batch download from playlists
+- Choose between MP3 (lossy) and WAV (lossless) formats
 - Real-time progress tracking
 - Conversion status monitoring
 - Direct download to ~/Downloads folder
-- Full E2E test coverage (17 tests)
+- Download history with localStorage persistence
+- Dark UI inspired by GitHub, with purple accents
+- Full E2E test coverage (25 tests)
+- Code quality checked with SonarQube (SonarLint)
 
 ## Quick Start with Docker
 
@@ -43,7 +49,7 @@ docker compose down
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python backend/api.py
+python -m backend.api
 ```
 
 ### Frontend
@@ -71,7 +77,8 @@ npx playwright test --ui
 
 - **Backend**: FastAPI, yt-dlp, Python 3.11
 - **Frontend**: React 18, TypeScript, Vite 5
-- **Testing**: Playwright (TypeScript)
+- **Testing**: Playwright (25 E2E tests)
+- **Code Quality**: SonarQube / SonarLint
 - **Containerization**: Docker, Docker Compose
 
 ## Project Structure

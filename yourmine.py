@@ -117,7 +117,7 @@ def download_batch(
         }
 
         for future in as_completed(future_to_url):
-            index, url = future_to_url[future]
+            index, _url = future_to_url[future]
             try:
                 if future.result():
                     successful += 1

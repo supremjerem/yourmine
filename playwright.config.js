@@ -26,7 +26,7 @@ export default defineConfig({
       cwd: './frontend',
     },
     {
-      command: 'venv/bin/python3 backend/api.py',
+      command: 'venv/bin/python3 -m backend.api',
       url: 'http://localhost:8000',
       reuseExistingServer: true,
     }

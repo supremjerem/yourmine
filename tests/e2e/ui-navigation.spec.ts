@@ -117,10 +117,10 @@ test.describe('UI & Navigation Tests', () => {
     });
 
     await test.step('Verify ARIA groups are present', async () => {
-      const modeToggle = page.locator('[role="group"][aria-label="Download mode selection"]');
+      const modeToggle = page.locator('fieldset[aria-label="Download mode selection"]');
       await expect(modeToggle).toBeVisible();
 
-      const formatSelector = page.locator('[role="group"][aria-label="Audio format selection"]');
+      const formatSelector = page.locator('fieldset[aria-label="Audio format selection"]');
       await expect(formatSelector).toBeVisible();
     });
   });

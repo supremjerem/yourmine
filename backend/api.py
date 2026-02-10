@@ -50,7 +50,7 @@ def get_output_directory() -> Path:
         test_file.touch()
         test_file.unlink()
         return downloads_dir
-    except (PermissionError, OSError) as e:
+    except OSError as e:
         print(f"Cannot use Downloads folder: {e}")
 
     desktop_dir = Path.home() / "Desktop"
@@ -61,7 +61,7 @@ def get_output_directory() -> Path:
             test_file.unlink()
             print(f"Using Desktop folder: {desktop_dir}")
             return desktop_dir
-        except (PermissionError, OSError):
+        except OSError:
             pass
 
     home_dir = Path.home()
@@ -158,6 +158,7 @@ async def create_batch_download(
         dict: Batch information with download IDs and total count.
     """
     download_ids = []
+    background_tasks: set[asyncio.Task] = set()
 
     for url in request.urls:
         download_id = str(uuid.uuid4())
@@ -174,9 +175,11 @@ async def create_batch_download(
         download_ids.append(download_id)
 
     for download_id, url in zip(download_ids, request.urls):
-        asyncio.create_task(
+        task = asyncio.create_task(
             process_download(download_id, str(url), request.format)
         )
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
 
     return {
         'batch_id': str(uuid.uuid4()),

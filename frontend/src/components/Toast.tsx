@@ -1,8 +1,8 @@
 import type { ToastType } from '../types'
 
 interface ToastProps {
-  message: string
-  type?: ToastType
+  readonly message: string
+  readonly type?: ToastType
 }
 
 function Toast({ message, type = 'info' }: ToastProps) {

@@ -2,13 +2,13 @@ import type { FormEvent } from 'react'
 import type { DownloadMode } from '../types'
 
 interface DownloadFormProps {
-  mode: DownloadMode
-  url: string
-  urls: string
-  loading: boolean
-  onUrlChange: (url: string) => void
-  onUrlsChange: (urls: string) => void
-  onSubmit: (e: FormEvent<HTMLFormElement>) => void
+  readonly mode: DownloadMode
+  readonly url: string
+  readonly urls: string
+  readonly loading: boolean
+  readonly onUrlChange: (url: string) => void
+  readonly onUrlsChange: (urls: string) => void
+  readonly onSubmit: (e: FormEvent<HTMLFormElement>) => void
 }
 
 function DownloadForm({
@@ -22,6 +22,7 @@ function DownloadForm({
 }: DownloadFormProps) {
   const isSingleMode = mode === 'single'
   const isDisabled = loading || (isSingleMode ? !url.trim() : !urls.trim())
+  const buttonLabel = loading ? 'Starting...' : (isSingleMode ? 'Download' : 'Download All')
 
   return (
     <form onSubmit={onSubmit} className="download-form">
@@ -46,7 +47,7 @@ function DownloadForm({
         />
       )}
       <button type="submit" disabled={isDisabled}>
-        {loading ? 'Starting...' : isSingleMode ? 'Download' : 'Download All'}
+        {buttonLabel}
       </button>
     </form>
   )

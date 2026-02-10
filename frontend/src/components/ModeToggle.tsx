@@ -1,15 +1,14 @@
 import type { DownloadMode } from '../types'
 
 interface ModeToggleProps {
-  mode: DownloadMode
-  onModeChange: (mode: DownloadMode) => void
+  readonly mode: DownloadMode
+  readonly onModeChange: (mode: DownloadMode) => void
 }
 
 function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
-    <div
+    <fieldset
       className="mode-toggle"
-      role="group"
       aria-label="Download mode selection"
     >
       <button
@@ -30,7 +29,7 @@ function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
       >
         Batch Download
       </button>
-    </div>
+    </fieldset>
   )
 }
 

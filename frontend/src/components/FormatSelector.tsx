@@ -1,15 +1,14 @@
 import type { AudioFormat } from '../types'
 
 interface FormatSelectorProps {
-  format: AudioFormat
-  onFormatChange: (format: AudioFormat) => void
+  readonly format: AudioFormat
+  readonly onFormatChange: (format: AudioFormat) => void
 }
 
 function FormatSelector({ format, onFormatChange }: FormatSelectorProps) {
   return (
-    <div
+    <fieldset
       className="format-selector"
-      role="group"
       aria-label="Audio format selection"
     >
       <label>
@@ -34,7 +33,7 @@ function FormatSelector({ format, onFormatChange }: FormatSelectorProps) {
         />
         <span>WAV (Lossless)</span>
       </label>
-    </div>
+    </fieldset>
   )
 }
 

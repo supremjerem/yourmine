@@ -10,12 +10,12 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #0d1117;
   min-height: 100vh;
   padding: 20px;
 }
 
 #root {
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
 }

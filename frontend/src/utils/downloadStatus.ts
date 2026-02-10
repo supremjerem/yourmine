@@ -22,14 +22,14 @@ const STATUS_ICONS: Record<DownloadStatusType, string> = {
 
 export function parsePercent(percentStr?: string): string {
   if (!percentStr) return '0%'
-  const cleaned = percentStr.replace(/\[[0-9;]+m/g, '').trim()
-  const match = cleaned.match(/[\d.]+/)
-  return match ? `${parseFloat(match[0]).toFixed(1)}%` : '0%'
+  const cleaned = percentStr.replaceAll(/\[[0-9;]+m/g, '').trim()
+  const match = /[\d.]+/.exec(cleaned)
+  return match ? `${Number.parseFloat(match[0]).toFixed(1)}%` : '0%'
 }
 
 export function cleanSpeed(speedStr?: string): string | null {
   if (!speedStr || speedStr === 'N/A') return null
-  return speedStr.replace(/\[[0-9;]+m/g, '').trim()
+  return speedStr.replaceAll(/\[[0-9;]+m/g, '').trim()
 }
 
 export function getStatusColor(status: DownloadStatusType): string {

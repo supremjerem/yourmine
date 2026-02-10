@@ -3,7 +3,7 @@ import { parsePercent, cleanSpeed, getStatusColor, getStatusIcon } from '../util
 import type { Download } from '../types'
 
 interface DownloadCardProps {
-  download: Download
+  readonly download: Download
 }
 
 function DownloadCard({ download }: DownloadCardProps) {
@@ -26,12 +26,12 @@ function DownloadCard({ download }: DownloadCardProps) {
         <p className="download-url">{download.url}</p>
         <p className="download-format">Format: {download.format.toUpperCase()}</p>
 
-        {download.progress && download.progress.percent && (
+        {download.progress?.percent && (
           <div className="progress-container">
             <div
               className="progress-bar-wrapper"
               role="progressbar"
-              aria-valuenow={parseFloat(parsePercent(download.progress.percent))}
+              aria-valuenow={Number.parseFloat(parsePercent(download.progress.percent))}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label={`Download progress: ${parsePercent(download.progress.percent)}`}
