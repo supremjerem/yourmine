@@ -5,12 +5,21 @@ This module provides functionality to download YouTube videos and convert
 them to various audio formats using yt-dlp.
 """
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
 import yt_dlp
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_MP3_QUALITY: str = "192"
+
+# Messages returned to callers. Raw yt-dlp text is logged but never returned:
+# it leaks local filesystem paths and internals to the client.
+ERROR_UNAVAILABLE = "Video unavailable, private, or region-restricted"
+ERROR_EXTRACT = "Could not read this video's details"
+ERROR_UNEXPECTED = "Download failed unexpectedly"
 
 
 def _build_postprocessors(audio_format: str) -> list[dict]:
@@ -57,7 +66,8 @@ def _make_progress_hook(
 
 
 def _make_postprocessor_hook(
-    progress_callback: Callable[[dict], None] | None, download_complete: list[bool]
+    progress_callback: Callable[[dict], None] | None,
+    download_complete: list[bool],
 ) -> Callable:
     """Create a yt-dlp post-processor hook."""
 
@@ -72,6 +82,23 @@ def _make_postprocessor_hook(
             )
 
     return postprocessor_hook
+
+
+def _resolve_filename(info: dict, audio_format: str) -> str:
+    """
+    Determine the name of the file actually written to disk.
+
+    yt-dlp sanitizes titles when building filenames, so reconstructing the name
+    from `info['title']` reports something that may not exist on disk. Prefer
+    the path yt-dlp reports for the post-processed file, and fall back to the
+    reconstructed name only when that is unavailable.
+    """
+    for download in info.get("requested_downloads") or []:
+        filepath = download.get("filepath")
+        if filepath:
+            return Path(filepath).name
+
+    return f"{info['title']}.{audio_format}"
 
 
 def download_audio(
@@ -99,9 +126,9 @@ def download_audio(
         A dictionary containing:
             - success (bool): Whether the download was successful.
             - title (str): Video title (if successful).
-            - filename (str): Output filename (if successful).
+            - filename (str): Name of the file written (if successful).
             - format (str): Audio format used (if successful).
-            - error (str): Error message (if failed).
+            - error (str): User-facing error message (if failed).
             - url (str): The original URL (if failed).
 
     Raises:
@@ -137,7 +164,7 @@ def download_audio(
                 progress_callback({"status": "extracting", "url": youtube_url})
 
             info = ydl.extract_info(youtube_url, download=True)
-            filename = f"{info['title']}.{audio_format}"
+            filename = _resolve_filename(info, audio_format)
 
             if progress_callback:
                 progress_callback({"status": "complete", "title": info["title"]})
@@ -148,17 +175,12 @@ def download_audio(
                 "filename": filename,
                 "format": audio_format,
             }
-    except yt_dlp.utils.DownloadError as e:
-        return {"success": False, "error": f"Download error: {e!s}", "url": youtube_url}
-    except yt_dlp.utils.ExtractorError as e:
-        return {
-            "success": False,
-            "error": f"Extractor error: {e!s}",
-            "url": youtube_url,
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Unexpected error: {e!s}",
-            "url": youtube_url,
-        }
+    except yt_dlp.utils.DownloadError as exc:
+        logger.warning("yt-dlp download error for %s: %s", youtube_url, exc)
+        return {"success": False, "error": ERROR_UNAVAILABLE, "url": youtube_url}
+    except yt_dlp.utils.ExtractorError as exc:
+        logger.warning("yt-dlp extractor error for %s: %s", youtube_url, exc)
+        return {"success": False, "error": ERROR_EXTRACT, "url": youtube_url}
+    except Exception:
+        logger.exception("Unexpected error downloading %s", youtube_url)
+        return {"success": False, "error": ERROR_UNEXPECTED, "url": youtube_url}

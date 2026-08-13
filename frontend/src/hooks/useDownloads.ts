@@ -19,6 +19,41 @@ function toErrorMessage(error: unknown): string {
   return 'Unknown error'
 }
 
+const CLEARED_IDS_KEY = 'clearedDownloadIds'
+
+/** Statuses a download will not move on from. */
+const TERMINAL_STATUSES = new Set<string>(['completed', 'failed'])
+
+/**
+ * Read the cleared-download IDs from localStorage.
+ *
+ * Runs inside a useState initializer, so a malformed value must not throw:
+ * an unguarded parse here leaves the app permanently unmountable until the
+ * user clears site data by hand.
+ */
+function readClearedIds(): Set<string> {
+  try {
+    const saved = localStorage.getItem(CLEARED_IDS_KEY)
+    if (!saved) return new Set()
+
+    const parsed: unknown = JSON.parse(saved)
+    if (!Array.isArray(parsed)) return new Set()
+
+    return new Set(parsed.filter((id): id is string => typeof id === 'string'))
+  } catch {
+    return new Set()
+  }
+}
+
+/** Persist cleared IDs, ignoring quota or serialization failures. */
+function writeClearedIds(ids: Set<string>): void {
+  try {
+    localStorage.setItem(CLEARED_IDS_KEY, JSON.stringify([...ids]))
+  } catch {
+    // Nothing actionable: the list is a convenience, not a source of truth.
+  }
+}
+
 interface UseDownloadsReturn {
   downloads: Download[]
   loading: boolean
@@ -35,10 +70,7 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
 
   const [sessionDownloadIds, setSessionDownloadIds] = useState<Set<string>>(new Set())
 
-  const [clearedIds, setClearedIds] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('clearedDownloadIds')
-    return saved ? new Set(JSON.parse(saved) as string[]) : new Set()
-  })
+  const [clearedIds, setClearedIds] = useState<Set<string>>(readClearedIds)
 
   // Stable refs to avoid re-creating the polling interval
   const downloadsRef = useRef<Download[]>(downloads)
@@ -47,13 +79,17 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
   const showToastRef = useRef(showToast)
   showToastRef.current = showToast
 
+  // Depend on whether anything is in flight, not on the downloads array
+  // itself: the poll below writes that array, so depending on it would tear
+  // down and rebuild the interval on every single tick.
+  const hasActiveDownloads = useMemo(
+    () => downloads.some((d) => !TERMINAL_STATUSES.has(d.status)),
+    [downloads]
+  )
+
   // Poll for download status
   useEffect(() => {
-    const activeDownloads = downloads.filter(
-      (d) => d.status !== 'completed' && d.status !== 'failed'
-    )
-
-    if (activeDownloads.length === 0) return
+    if (!hasActiveDownloads) return
 
     const controller = new AbortController()
 
@@ -88,7 +124,7 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
       controller.abort()
       clearInterval(interval)
     }
-  }, [downloads])
+  }, [hasActiveDownloads])
 
   // Initialize: load downloads from backend
   useEffect(() => {
@@ -179,13 +215,19 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
       .filter((d) => !currentSessionIds.has(d.id))
       .map((d) => d.id)
 
+    // Only keep IDs the backend still reports. Without this the list grows
+    // without bound, retaining IDs for jobs that were evicted long ago.
+    const knownIds = new Set(currentDl.map((d) => d.id))
+
     setClearedIds((prev) => {
-      const newSet = new Set([...prev, ...historyIds])
-      localStorage.setItem('clearedDownloadIds', JSON.stringify([...newSet]))
-      return newSet
+      const next = new Set(
+        [...prev, ...historyIds].filter((id) => knownIds.has(id))
+      )
+      writeClearedIds(next)
+      return next
     })
 
-    showToastRef.current('History cleared!', 'success')
+    showToastRef.current('History cleared', 'success')
   }, [sessionDownloadIds])
 
   const currentDownloads = useMemo(

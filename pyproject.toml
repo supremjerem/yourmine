@@ -34,6 +34,7 @@ ignore = [
 testpaths = ["tests/backend"]
 pythonpath = ["."]
 addopts = "-v --strict-markers"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["backend"]

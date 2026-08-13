@@ -20,16 +20,25 @@ const STATUS_ICONS: Record<DownloadStatusType, string> = {
   failed: '❌'
 }
 
+/**
+ * ANSI SGR escape sequence, including the leading ESC.
+ *
+ * yt-dlp colours its progress strings. Matching only the bracketed part left
+ * the bare ESC character behind, which then rendered in the UI.
+ */
+const ANSI_ESCAPE = /\u001b?\[[0-9;]*m/g
+
 export function parsePercent(percentStr?: string): string {
   if (!percentStr) return '0%'
-  const cleaned = percentStr.replaceAll(/\[[0-9;]+m/g, '').trim()
+  const cleaned = percentStr.replaceAll(ANSI_ESCAPE, '').trim()
   const match = /[\d.]+/.exec(cleaned)
   return match ? `${Number.parseFloat(match[0]).toFixed(1)}%` : '0%'
 }
 
 export function cleanSpeed(speedStr?: string): string | null {
   if (!speedStr || speedStr === 'N/A') return null
-  return speedStr.replaceAll(/\[[0-9;]+m/g, '').trim()
+  const cleaned = speedStr.replaceAll(ANSI_ESCAPE, '').trim()
+  return cleaned || null
 }
 
 export function getStatusColor(status: DownloadStatusType): string {

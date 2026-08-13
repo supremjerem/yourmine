@@ -1,102 +1,84 @@
 """
-FastAPI Backend for Yourmine YouTube Downloader
+FastAPI application for Yourmine.
+
+This module owns the HTTP layer only: routing, status codes, and dependency
+wiring. Job orchestration lives in `service.py` and state in `store.py`.
 """
 
-import asyncio
-import threading
+import logging
 import uuid
-from datetime import datetime
-from pathlib import Path
-from typing import Literal
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Annotated
 
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, HttpUrl
 
+from backend.config import Settings, configure_logging
 from backend.downloader import download_audio
+from backend.models import (
+    BatchDownloadRequest,
+    BatchDownloadResponse,
+    DownloadJob,
+    DownloadListResponse,
+    DownloadRequest,
+)
+from backend.service import DownloadService
+from backend.store import DownloadStore
 
-app = FastAPI(title="Yourmine API", version="2.0.0")
+logger = logging.getLogger(__name__)
 
-# CORS for React frontend
+settings = Settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """
+    Build the application's dependencies at startup.
+
+    Resolving the output directory here rather than at import time keeps
+    importing this module free of filesystem side effects.
+    """
+    configure_logging(settings.log_level)
+
+    output_dir = settings.resolved_output_dir()
+    logger.info("Output directory: %s", output_dir)
+
+    store = DownloadStore(max_jobs=settings.max_stored_jobs)
+    app.state.store = store
+    app.state.service = DownloadService(
+        store=store,
+        output_dir=output_dir,
+        download_fn=download_audio,
+        max_concurrent=settings.max_concurrent_downloads,
+    )
+    yield
+
+
+app = FastAPI(title="Yourmine API", version="2.0.0", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
 
-# Thread-safe storage for download jobs
-downloads: dict = {}
-downloads_lock = threading.Lock()
+
+def get_store(request: Request) -> DownloadStore:
+    """Provide the application's job store."""
+    return request.app.state.store
 
 
-def get_output_directory() -> Path:
-    """
-    Get the best available directory for downloads.
-
-    Tries directories in order of preference:
-        1. ~/Downloads (creates if doesn't exist)
-        2. ~/Desktop (if exists and writable)
-        3. ~/ (home directory as last resort)
-
-    Returns:
-        Path: The path to the selected output directory.
-    """
-    downloads_dir = Path.home() / "Downloads"
-    try:
-        downloads_dir.mkdir(exist_ok=True)
-        test_file = downloads_dir / ".test_write"
-        test_file.touch()
-        test_file.unlink()
-        return downloads_dir
-    except OSError as e:
-        print(f"Cannot use Downloads folder: {e}")
-
-    desktop_dir = Path.home() / "Desktop"
-    if desktop_dir.exists() and desktop_dir.is_dir():
-        try:
-            test_file = desktop_dir / ".test_write"
-            test_file.touch()
-            test_file.unlink()
-            print(f"Using Desktop folder: {desktop_dir}")
-            return desktop_dir
-        except OSError:
-            pass
-
-    home_dir = Path.home()
-    print(f"Using home directory: {home_dir}")
-    return home_dir
+def get_service(request: Request) -> DownloadService:
+    """Provide the application's download service."""
+    return request.app.state.service
 
 
-OUTPUT_DIR = get_output_directory()
-print(f"Output directory set to: {OUTPUT_DIR}")
-
-
-AudioFormat = Literal["mp3", "wav"]
-
-
-class DownloadRequest(BaseModel):
-    url: HttpUrl
-    format: AudioFormat = "mp3"
-
-
-class BatchDownloadRequest(BaseModel):
-    urls: list[HttpUrl]
-    format: AudioFormat = "mp3"
-
-
-class DownloadStatus(BaseModel):
-    id: str
-    status: str
-    url: str
-    format: str
-    title: str | None = None
-    filename: str | None = None
-    error: str | None = None
-    progress: dict | None = None
-    created_at: str
+StoreDep = Annotated[DownloadStore, Depends(get_store)]
+ServiceDep = Annotated[DownloadService, Depends(get_service)]
 
 
 @app.get("/")
@@ -110,137 +92,84 @@ def root() -> dict:
     return {"status": "ok", "message": "Yourmine API is running"}
 
 
-@app.post("/download", response_model=DownloadStatus)
+@app.post("/download", response_model=DownloadJob)
 async def create_download(
-    request: DownloadRequest, background_tasks: BackgroundTasks
-) -> dict:
+    request: DownloadRequest,
+    service: ServiceDep,
+) -> DownloadJob:
     """
     Start a single video download.
 
     Args:
         request: The download request containing URL and format.
-        background_tasks: FastAPI background tasks handler.
+        service: The download orchestration service.
 
     Returns:
-        dict: The created download job with status information.
+        The created download job.
     """
-    download_id = str(uuid.uuid4())
-
-    job = {
-        "id": download_id,
-        "status": "queued",
-        "url": str(request.url),
-        "format": request.format,
-        "created_at": datetime.now().isoformat(),
-        "progress": None,
-    }
-    with downloads_lock:
-        downloads[download_id] = job
-
-    background_tasks.add_task(
-        process_download, download_id, str(request.url), request.format
-    )
-
+    job = service.create_job(request.url, request.format)
+    service.schedule(job)
     return job
 
 
-@app.post("/download/batch")
+@app.post("/download/batch", response_model=BatchDownloadResponse)
 async def create_batch_download(
     request: BatchDownloadRequest,
-) -> dict:
+    service: ServiceDep,
+) -> BatchDownloadResponse:
     """
-    Start multiple video downloads in parallel.
+    Start multiple video downloads.
+
+    Downloads run concurrently up to the configured concurrency limit; the
+    remainder wait their turn rather than saturating the executor.
 
     Args:
         request: The batch download request containing URLs and format.
+        service: The download orchestration service.
 
     Returns:
-        dict: Batch information with download IDs and total count.
+        Batch information with the created download IDs.
+
+    Raises:
+        HTTPException: 422 if the batch exceeds the configured size limit.
     """
-    download_ids = []
-    background_tasks: set[asyncio.Task] = set()
-
-    for url in request.urls:
-        download_id = str(uuid.uuid4())
-        job = {
-            "id": download_id,
-            "status": "queued",
-            "url": str(url),
-            "format": request.format,
-            "created_at": datetime.now().isoformat(),
-            "progress": None,
-        }
-        with downloads_lock:
-            downloads[download_id] = job
-        download_ids.append(download_id)
-
-    for download_id, url in zip(download_ids, request.urls, strict=True):
-        task = asyncio.create_task(
-            process_download(download_id, str(url), request.format)
+    if len(request.urls) > settings.max_batch_size:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Batch is limited to {settings.max_batch_size} URLs; "
+                f"received {len(request.urls)}"
+            ),
         )
-        background_tasks.add(task)
-        task.add_done_callback(background_tasks.discard)
 
-    return {
-        "batch_id": str(uuid.uuid4()),
-        "download_ids": download_ids,
-        "total": len(download_ids),
-    }
+    jobs = [service.create_job(url, request.format) for url in request.urls]
+    for job in jobs:
+        service.schedule(job)
 
-
-@app.get("/downloads")
-async def list_downloads() -> dict:
-    """
-    List all downloads.
-
-    Returns:
-        dict: All download jobs with their current status and total count.
-    """
-    with downloads_lock:
-        items = list(downloads.values())
-    return {"downloads": items, "total": len(items)}
-
-
-async def process_download(download_id: str, url: str, audio_format: str) -> None:
-    """
-    Background task to process a download.
-
-    Args:
-        download_id: Unique identifier for this download job.
-        url: The YouTube video URL to download.
-        audio_format: Target audio format (mp3 or wav).
-    """
-
-    def update_progress(progress_data: dict) -> None:
-        with downloads_lock:
-            if download_id in downloads:
-                downloads[download_id]["progress"] = progress_data
-                status = progress_data.get("status")
-                if status in ("downloading", "extracting", "converting"):
-                    downloads[download_id]["status"] = status
-
-    with downloads_lock:
-        downloads[download_id]["status"] = "processing"
-
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        None, download_audio, url, str(OUTPUT_DIR), audio_format, update_progress
+    return BatchDownloadResponse(
+        batch_id=str(uuid.uuid4()),
+        download_ids=[job.id for job in jobs],
+        total=len(jobs),
     )
 
-    with downloads_lock:
-        if result["success"]:
-            downloads[download_id].update(
-                {
-                    "status": "completed",
-                    "title": result["title"],
-                    "filename": result["filename"],
-                }
-            )
-        else:
-            downloads[download_id].update(
-                {"status": "failed", "error": result["error"]}
-            )
+
+@app.get("/downloads", response_model=DownloadListResponse)
+async def list_downloads(
+    store: StoreDep,
+) -> DownloadListResponse:
+    """
+    List all downloads, newest first.
+
+    Args:
+        store: The job store.
+
+    Returns:
+        All download jobs with their current status and the total count.
+    """
+    jobs = store.list_all()
+    return DownloadListResponse(downloads=jobs, total=len(jobs))
 
 
 if __name__ == "__main__":
-    uvicorn.run("backend.api:app", host="0.0.0.0", port=8000, reload=True)
+    configure_logging(settings.log_level)
+    uvicorn.run("backend.api:app", host=settings.host, port=settings.port)

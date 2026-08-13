@@ -75,3 +75,7 @@ dist-ssr/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Local environment overrides
+.env
+frontend/.env

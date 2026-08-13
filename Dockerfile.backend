@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 # Install FFmpeg and system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,11 +14,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./backend/
 
-# Expose backend port
+# Run as an unprivileged user. The container writes only to its download
+# volume, which is mounted at this user's home directory.
+RUN useradd --create-home --uid 1000 yourmine \
+    && mkdir -p /home/yourmine/Downloads \
+    && chown -R yourmine:yourmine /home/yourmine /app
+USER yourmine
+
+# Inside the container the API must listen on all interfaces to be reachable
+# through the published port; the host-side binding is what limits exposure.
+ENV YOURMINE_HOST=0.0.0.0 \
+    YOURMINE_PORT=8000 \
+    PYTHONUNBUFFERED=1
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" || exit 1
 
-# Run the FastAPI application
-CMD ["python", "-m", "backend.api"]
+# Serve without the reload watcher, which is a development-only feature.
+CMD ["uvicorn", "backend.api:app", "--host", "0.0.0.0", "--port", "8000"]
