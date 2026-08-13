@@ -7,10 +7,7 @@ interface FormatSelectorProps {
 
 function FormatSelector({ format, onFormatChange }: FormatSelectorProps) {
   return (
-    <fieldset
-      className="format-selector"
-      aria-label="Audio format selection"
-    >
+    <fieldset className="format-selector" aria-label="Audio format selection">
       <label>
         <input
           type="radio"

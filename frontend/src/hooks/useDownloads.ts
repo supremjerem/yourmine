@@ -6,6 +6,19 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 type ShowToastFn = (message: string, type?: ToastType) => void
 
+/** Error body shape returned by FastAPI for 4xx/5xx responses. */
+interface ApiErrorBody {
+  detail?: string
+}
+
+/** Turn an unknown thrown value into a message suitable for a toast. */
+function toErrorMessage(error: unknown): string {
+  if (axios.isAxiosError<ApiErrorBody>(error)) {
+    return error.response?.data?.detail ?? error.message
+  }
+  return 'Unknown error'
+}
+
 interface UseDownloadsReturn {
   downloads: Download[]
   loading: boolean
@@ -36,8 +49,8 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
 
   // Poll for download status
   useEffect(() => {
-    const activeDownloads = downloads.filter(d =>
-      d.status !== 'completed' && d.status !== 'failed'
+    const activeDownloads = downloads.filter(
+      (d) => d.status !== 'completed' && d.status !== 'failed'
     )
 
     if (activeDownloads.length === 0) return
@@ -52,11 +65,14 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
         )
         const newDownloads = response.data.downloads
 
-        const previousDownloads = new Map(downloadsRef.current.map(d => [d.id, d]))
-        newDownloads.forEach(d => {
+        const previousDownloads = new Map(downloadsRef.current.map((d) => [d.id, d]))
+        newDownloads.forEach((d) => {
           const prev = previousDownloads.get(d.id)
           if (prev && prev.status !== 'completed' && d.status === 'completed') {
-            showToastRef.current(`✅ ${d.title} downloaded to your Downloads folder!`, 'success')
+            showToastRef.current(
+              `✅ ${d.title} downloaded to your Downloads folder!`,
+              'success'
+            )
           }
         })
 
@@ -94,71 +110,76 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
       }
     }
 
-    initializeDownloads()
+    void initializeDownloads()
 
     return () => {
       controller.abort()
     }
   }, [])
 
-  const startSingleDownload = useCallback(async (url: string, format: AudioFormat): Promise<boolean> => {
-    setLoading(true)
-    try {
-      const response = await axios.post<Download>(`${API_URL}/download`, {
-        url: url.trim(),
-        format
-      })
+  const startSingleDownload = useCallback(
+    async (url: string, format: AudioFormat): Promise<boolean> => {
+      setLoading(true)
+      try {
+        const response = await axios.post<Download>(`${API_URL}/download`, {
+          url: url.trim(),
+          format
+        })
 
-      setSessionDownloadIds(prev => new Set([...prev, response.data.id]))
-      setDownloads(prev => [response.data, ...prev])
-      showToastRef.current('Download started!', 'success')
-      return true
-    } catch (error) {
-      const msg = axios.isAxiosError(error)
-        ? error.response?.data?.detail || error.message
-        : 'Unknown error'
-      showToastRef.current('Error: ' + msg, 'error')
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+        setSessionDownloadIds((prev) => new Set([...prev, response.data.id]))
+        setDownloads((prev) => [response.data, ...prev])
+        showToastRef.current('Download started!', 'success')
+        return true
+      } catch (error) {
+        showToastRef.current('Error: ' + toErrorMessage(error), 'error')
+        return false
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
 
-  const startBatchDownload = useCallback(async (urlList: string[], format: AudioFormat): Promise<boolean> => {
-    setLoading(true)
-    try {
-      const batchResponse = await axios.post<{ download_ids: string[] }>(`${API_URL}/download/batch`, {
-        urls: urlList,
-        format
-      })
+  const startBatchDownload = useCallback(
+    async (urlList: string[], format: AudioFormat): Promise<boolean> => {
+      setLoading(true)
+      try {
+        const batchResponse = await axios.post<{ download_ids: string[] }>(
+          `${API_URL}/download/batch`,
+          {
+            urls: urlList,
+            format
+          }
+        )
 
-      const newIds = batchResponse.data.download_ids || []
-      setSessionDownloadIds(prev => new Set([...prev, ...newIds]))
+        const newIds = batchResponse.data.download_ids || []
+        setSessionDownloadIds((prev) => new Set([...prev, ...newIds]))
 
-      const response = await axios.get<{ downloads: Download[] }>(`${API_URL}/downloads`)
-      setDownloads(response.data.downloads)
-      showToastRef.current(`${urlList.length} downloads started!`, 'success')
-      return true
-    } catch (error) {
-      const msg = axios.isAxiosError(error)
-        ? error.response?.data?.detail || error.message
-        : 'Unknown error'
-      showToastRef.current('Error: ' + msg, 'error')
-      return false
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+        const response = await axios.get<{ downloads: Download[] }>(
+          `${API_URL}/downloads`
+        )
+        setDownloads(response.data.downloads)
+        showToastRef.current(`${urlList.length} downloads started!`, 'success')
+        return true
+      } catch (error) {
+        showToastRef.current('Error: ' + toErrorMessage(error), 'error')
+        return false
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
 
   const clearHistory = useCallback(() => {
     const currentDl = downloadsRef.current
     const currentSessionIds = sessionDownloadIds
 
     const historyIds = currentDl
-      .filter(d => !currentSessionIds.has(d.id))
-      .map(d => d.id)
+      .filter((d) => !currentSessionIds.has(d.id))
+      .map((d) => d.id)
 
-    setClearedIds(prev => {
+    setClearedIds((prev) => {
       const newSet = new Set([...prev, ...historyIds])
       localStorage.setItem('clearedDownloadIds', JSON.stringify([...newSet]))
       return newSet
@@ -167,15 +188,14 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
     showToastRef.current('History cleared!', 'success')
   }, [sessionDownloadIds])
 
-  const currentDownloads = useMemo(() =>
-    downloads.filter(d => sessionDownloadIds.has(d.id)),
+  const currentDownloads = useMemo(
+    () => downloads.filter((d) => sessionDownloadIds.has(d.id)),
     [downloads, sessionDownloadIds]
   )
 
-  const historyDownloads = useMemo(() =>
-    downloads.filter(d =>
-      !sessionDownloadIds.has(d.id) && !clearedIds.has(d.id)
-    ),
+  const historyDownloads = useMemo(
+    () =>
+      downloads.filter((d) => !sessionDownloadIds.has(d.id) && !clearedIds.has(d.id)),
     [downloads, sessionDownloadIds, clearedIds]
   )
 

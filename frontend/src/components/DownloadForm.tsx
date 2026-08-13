@@ -22,7 +22,11 @@ function DownloadForm({
 }: DownloadFormProps) {
   const isSingleMode = mode === 'single'
   const isDisabled = loading || (isSingleMode ? !url.trim() : !urls.trim())
-  const buttonLabel = loading ? 'Starting...' : (isSingleMode ? 'Download' : 'Download All')
+  const buttonLabel = loading
+    ? 'Starting...'
+    : isSingleMode
+      ? 'Download'
+      : 'Download All'
 
   return (
     <form onSubmit={onSubmit} className="download-form">

@@ -27,25 +27,29 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          padding: '40px',
-          textAlign: 'center',
-          backgroundColor: '#fee',
-          borderRadius: '8px',
-          margin: '20px'
-        }}>
+        <div
+          style={{
+            padding: '40px',
+            textAlign: 'center',
+            backgroundColor: '#fee',
+            borderRadius: '8px',
+            margin: '20px'
+          }}
+        >
           <h2>Something went wrong</h2>
           <details style={{ marginTop: '20px', textAlign: 'left' }}>
             <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
               Error details
             </summary>
-            <pre style={{
-              marginTop: '10px',
-              padding: '10px',
-              backgroundColor: '#fff',
-              borderRadius: '4px',
-              overflow: 'auto'
-            }}>
+            <pre
+              style={{
+                marginTop: '10px',
+                padding: '10px',
+                backgroundColor: '#fff',
+                borderRadius: '4px',
+                overflow: 'auto'
+              }}
+            >
               {this.state.error?.message}
             </pre>
           </details>

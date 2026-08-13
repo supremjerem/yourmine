@@ -28,29 +28,36 @@ function App() {
     clearHistory
   } = useDownloads(showToast)
 
-  const handleSingleDownload = useCallback(async (e: FormEvent) => {
-    e.preventDefault()
-    if (!url.trim()) return
+  const handleSingleDownload = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault()
+      if (!url.trim()) return
 
-    const success = await startSingleDownload(url, format)
-    if (success) {
-      setUrl('')
-    }
-  }, [url, format, startSingleDownload])
+      const success = await startSingleDownload(url, format)
+      if (success) {
+        setUrl('')
+      }
+    },
+    [url, format, startSingleDownload]
+  )
 
-  const handleBatchDownload = useCallback(async (e: FormEvent) => {
-    e.preventDefault()
-    const urlList = urls.split('\n')
-      .map(u => u.trim())
-      .filter(u => u && !u.startsWith('#'))
+  const handleBatchDownload = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault()
+      const urlList = urls
+        .split('\n')
+        .map((u) => u.trim())
+        .filter((u) => u && !u.startsWith('#'))
 
-    if (urlList.length === 0) return
+      if (urlList.length === 0) return
 
-    const success = await startBatchDownload(urlList, format)
-    if (success) {
-      setUrls('')
-    }
-  }, [urls, format, startBatchDownload])
+      const success = await startBatchDownload(urlList, format)
+      if (success) {
+        setUrls('')
+      }
+    },
+    [urls, format, startBatchDownload]
+  )
 
   return (
     <div className="app">
@@ -73,7 +80,9 @@ function App() {
           loading={loading}
           onUrlChange={setUrl}
           onUrlsChange={setUrls}
-          onSubmit={mode === 'single' ? handleSingleDownload : handleBatchDownload}
+          onSubmit={(e) => {
+            void (mode === 'single' ? handleSingleDownload(e) : handleBatchDownload(e))
+          }}
         />
 
         <DownloadsList

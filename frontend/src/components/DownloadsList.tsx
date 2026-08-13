@@ -16,7 +16,8 @@ function DownloadsList({
   onViewModeChange,
   onClearHistory
 }: DownloadsListProps) {
-  const displayedDownloads = viewMode === 'current' ? currentDownloads : historyDownloads
+  const displayedDownloads =
+    viewMode === 'current' ? currentDownloads : historyDownloads
 
   return (
     <div className="downloads-list">

@@ -14,7 +14,6 @@ import argparse
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Tuple
 
 from backend.downloader import download_audio
 
@@ -23,7 +22,7 @@ def cli_download(
     youtube_url: str,
     output_dir: str = ".",
     audio_format: str = "mp3",
-    index: int | None = None
+    index: int | None = None,
 ) -> bool:
     """
     CLI wrapper around download_audio with console output.
@@ -38,12 +37,13 @@ def cli_download(
         True if download was successful, False otherwise.
     """
     prefix = f"[{index}] " if index is not None else ""
+    quality_note = " (lossless)" if audio_format == "wav" else ""
     print(f"{prefix}Downloading: {youtube_url}")
-    print(f"{prefix}Format: {audio_format.upper()} {'(lossless)' if audio_format == 'wav' else ''}")
+    print(f"{prefix}Format: {audio_format.upper()}{quality_note}")
 
     result = download_audio(youtube_url, output_dir, audio_format)
 
-    if result['success']:
+    if result["success"]:
         print(f"{prefix}✓ Conversion complete: {result['title']}.{audio_format}")
         return True
 
@@ -51,7 +51,7 @@ def cli_download(
     return False
 
 
-def read_urls_from_file(file_path: str) -> List[str]:
+def read_urls_from_file(file_path: str) -> list[str]:
     """
     Read YouTube URLs from a text file.
 
@@ -69,10 +69,10 @@ def read_urls_from_file(file_path: str) -> List[str]:
     """
     urls = []
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     urls.append(line)
     except FileNotFoundError:
         print(f"✗ File not found: {file_path}")
@@ -85,11 +85,8 @@ def read_urls_from_file(file_path: str) -> List[str]:
 
 
 def download_batch(
-    urls: List[str],
-    output_dir: str,
-    audio_format: str,
-    max_workers: int = 3
-) -> Tuple[int, int]:
+    urls: list[str], output_dir: str, audio_format: str, max_workers: int = 3
+) -> tuple[int, int]:
     """
     Download multiple YouTube videos in parallel.
 
@@ -112,7 +109,10 @@ def download_batch(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_url = {
-            executor.submit(cli_download, url, output_dir, audio_format, i + 1): (i + 1, url)
+            executor.submit(cli_download, url, output_dir, audio_format, i + 1): (
+                i + 1,
+                url,
+            )
             for i, url in enumerate(urls)
         }
 
@@ -135,7 +135,7 @@ def main() -> None:
     download or batch download mode based on the provided options.
     """
     parser = argparse.ArgumentParser(
-        description='Yourmine - YouTube Audio Converter',
+        description="Yourmine - YouTube Audio Converter",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -146,26 +146,45 @@ Examples:
   # Batch download from file
   python yourmine.py --file urls.txt --format wav --output ~/Music
   python yourmine.py -i urls.txt -w 5  # 5 parallel downloads
-        """
+        """,
     )
 
-    parser.add_argument('url', nargs='?', help='YouTube video URL')
-    parser.add_argument('-i', '--file', '--input', dest='file',
-                        help='Text file containing YouTube URLs (one per line)')
-    parser.add_argument('-o', '--output', default='.',
-                        help='Output directory (default: current directory)')
-    parser.add_argument('-f', '--format', choices=['mp3', 'wav'], default='mp3',
-                        help='Audio format: mp3 (lossy, default) or wav (lossless)')
-    parser.add_argument('-w', '--workers', type=int, default=3,
-                        help='Number of parallel downloads for batch mode (default: 3)')
+    parser.add_argument("url", nargs="?", help="YouTube video URL")
+    parser.add_argument(
+        "-i",
+        "--file",
+        "--input",
+        dest="file",
+        help="Text file containing YouTube URLs (one per line)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        default=".",
+        help="Output directory (default: current directory)",
+    )
+    parser.add_argument(
+        "-f",
+        "--format",
+        choices=["mp3", "wav"],
+        default="mp3",
+        help="Audio format: mp3 (lossy, default) or wav (lossless)",
+    )
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        default=3,
+        help="Number of parallel downloads for batch mode (default: 3)",
+    )
 
     args = parser.parse_args()
 
     if not args.url and not args.file:
-        parser.error('Either provide a URL or use --file to specify a file with URLs')
+        parser.error("Either provide a URL or use --file to specify a file with URLs")
 
     if args.url and args.file:
-        parser.error('Cannot use both URL and --file. Choose one.')
+        parser.error("Cannot use both URL and --file. Choose one.")
 
     Path(args.output).mkdir(parents=True, exist_ok=True)
 

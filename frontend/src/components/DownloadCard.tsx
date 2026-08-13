@@ -1,5 +1,10 @@
 import { memo } from 'react'
-import { parsePercent, cleanSpeed, getStatusColor, getStatusIcon } from '../utils/downloadStatus'
+import {
+  parsePercent,
+  cleanSpeed,
+  getStatusColor,
+  getStatusIcon
+} from '../utils/downloadStatus'
 import type { Download } from '../types'
 
 interface DownloadCardProps {
@@ -51,7 +56,9 @@ function DownloadCard({ download }: DownloadCardProps) {
         )}
 
         {download.error && (
-          <p className="error-message" role="alert">{download.error}</p>
+          <p className="error-message" role="alert">
+            {download.error}
+          </p>
         )}
       </div>
     </div>

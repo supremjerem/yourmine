@@ -7,10 +7,7 @@ interface ModeToggleProps {
 
 function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
-    <fieldset
-      className="mode-toggle"
-      aria-label="Download mode selection"
-    >
+    <fieldset className="mode-toggle" aria-label="Download mode selection">
       <button
         className={mode === 'single' ? 'active' : ''}
         onClick={() => onModeChange('single')}

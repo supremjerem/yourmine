@@ -1,16 +1,17 @@
 """
 FastAPI Backend for Yourmine YouTube Downloader
 """
+
 import asyncio
 import threading
 import uuid
 from datetime import datetime
-from typing import Literal, Optional
+from pathlib import Path
+from typing import Literal
 
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 from pydantic import BaseModel, HttpUrl
 
 from backend.downloader import download_audio
@@ -91,10 +92,10 @@ class DownloadStatus(BaseModel):
     status: str
     url: str
     format: str
-    title: Optional[str] = None
-    filename: Optional[str] = None
-    error: Optional[str] = None
-    progress: Optional[dict] = None
+    title: str | None = None
+    filename: str | None = None
+    error: str | None = None
+    progress: dict | None = None
     created_at: str
 
 
@@ -111,8 +112,7 @@ def root() -> dict:
 
 @app.post("/download", response_model=DownloadStatus)
 async def create_download(
-    request: DownloadRequest,
-    background_tasks: BackgroundTasks
+    request: DownloadRequest, background_tasks: BackgroundTasks
 ) -> dict:
     """
     Start a single video download.
@@ -127,12 +127,12 @@ async def create_download(
     download_id = str(uuid.uuid4())
 
     job = {
-        'id': download_id,
-        'status': 'queued',
-        'url': str(request.url),
-        'format': request.format,
-        'created_at': datetime.now().isoformat(),
-        'progress': None
+        "id": download_id,
+        "status": "queued",
+        "url": str(request.url),
+        "format": request.format,
+        "created_at": datetime.now().isoformat(),
+        "progress": None,
     }
     with downloads_lock:
         downloads[download_id] = job
@@ -163,18 +163,18 @@ async def create_batch_download(
     for url in request.urls:
         download_id = str(uuid.uuid4())
         job = {
-            'id': download_id,
-            'status': 'queued',
-            'url': str(url),
-            'format': request.format,
-            'created_at': datetime.now().isoformat(),
-            'progress': None
+            "id": download_id,
+            "status": "queued",
+            "url": str(url),
+            "format": request.format,
+            "created_at": datetime.now().isoformat(),
+            "progress": None,
         }
         with downloads_lock:
             downloads[download_id] = job
         download_ids.append(download_id)
 
-    for download_id, url in zip(download_ids, request.urls):
+    for download_id, url in zip(download_ids, request.urls, strict=True):
         task = asyncio.create_task(
             process_download(download_id, str(url), request.format)
         )
@@ -182,9 +182,9 @@ async def create_batch_download(
         task.add_done_callback(background_tasks.discard)
 
     return {
-        'batch_id': str(uuid.uuid4()),
-        'download_ids': download_ids,
-        'total': len(download_ids)
+        "batch_id": str(uuid.uuid4()),
+        "download_ids": download_ids,
+        "total": len(download_ids),
     }
 
 
@@ -198,15 +198,10 @@ async def list_downloads() -> dict:
     """
     with downloads_lock:
         items = list(downloads.values())
-    return {
-        'downloads': items,
-        'total': len(items)
-    }
+    return {"downloads": items, "total": len(items)}
 
 
-async def process_download(
-    download_id: str, url: str, audio_format: str
-) -> None:
+async def process_download(download_id: str, url: str, audio_format: str) -> None:
     """
     Background task to process a download.
 
@@ -215,39 +210,36 @@ async def process_download(
         url: The YouTube video URL to download.
         audio_format: Target audio format (mp3 or wav).
     """
+
     def update_progress(progress_data: dict) -> None:
         with downloads_lock:
             if download_id in downloads:
-                downloads[download_id]['progress'] = progress_data
-                status = progress_data.get('status')
-                if status in ('downloading', 'extracting', 'converting'):
-                    downloads[download_id]['status'] = status
+                downloads[download_id]["progress"] = progress_data
+                status = progress_data.get("status")
+                if status in ("downloading", "extracting", "converting"):
+                    downloads[download_id]["status"] = status
 
     with downloads_lock:
-        downloads[download_id]['status'] = 'processing'
+        downloads[download_id]["status"] = "processing"
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
-        None,
-        download_audio,
-        url,
-        str(OUTPUT_DIR),
-        audio_format,
-        update_progress
+        None, download_audio, url, str(OUTPUT_DIR), audio_format, update_progress
     )
 
     with downloads_lock:
-        if result['success']:
-            downloads[download_id].update({
-                'status': 'completed',
-                'title': result['title'],
-                'filename': result['filename']
-            })
+        if result["success"]:
+            downloads[download_id].update(
+                {
+                    "status": "completed",
+                    "title": result["title"],
+                    "filename": result["filename"],
+                }
+            )
         else:
-            downloads[download_id].update({
-                'status': 'failed',
-                'error': result['error']
-            })
+            downloads[download_id].update(
+                {"status": "failed", "error": result["error"]}
+            )
 
 
 if __name__ == "__main__":
