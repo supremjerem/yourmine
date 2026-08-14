@@ -1,5 +1,10 @@
 FROM python:3.11-slim
 
+# GHCR links a package to its repository when the image carries this
+# label, which is what lets the repository's GITHUB_TOKEN push to it.
+LABEL org.opencontainers.image.source="https://github.com/supremjerem/yourmine"
+LABEL org.opencontainers.image.licenses="MIT"
+
 # Install FFmpeg and system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
