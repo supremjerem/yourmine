@@ -26,6 +26,12 @@ docker compose down        # stop
 The UI is at http://localhost:3000. Both containers run as non-root and are
 published on loopback only.
 
+Prebuilt images are on GHCR for `linux/amd64` and `linux/arm64`:
+
+```bash
+docker compose pull && docker compose up
+```
+
 ## Development setup
 
 ### Prerequisites
