@@ -1,3 +1,4 @@
+import styles from './Segmented.module.css'
 import type { DownloadMode } from '../types'
 
 interface ModeToggleProps {
@@ -7,27 +8,27 @@ interface ModeToggleProps {
 
 function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
-    <fieldset
-      className="mode-toggle"
-      aria-label="Download mode selection"
-    >
+    <fieldset className={styles.group} aria-label="Download mode selection">
+      <span className={styles.legend}>Input</span>
       <button
-        className={mode === 'single' ? 'active' : ''}
+        className={styles.option}
+        data-active={mode === 'single' || undefined}
         onClick={() => onModeChange('single')}
         aria-pressed={mode === 'single'}
         aria-label="Single download mode"
         type="button"
       >
-        Single Download
+        One link
       </button>
       <button
-        className={mode === 'batch' ? 'active' : ''}
+        className={styles.option}
+        data-active={mode === 'batch' || undefined}
         onClick={() => onModeChange('batch')}
         aria-pressed={mode === 'batch'}
         aria-label="Batch download mode"
         type="button"
       >
-        Batch Download
+        Many links
       </button>
     </fieldset>
   )

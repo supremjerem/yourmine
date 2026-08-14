@@ -9,7 +9,7 @@ test.describe('UI & Navigation Tests', () => {
   test('should display the application header', async ({ page }) => {
     await test.step('Verify header content', async () => {
       await expect(page.locator('h1')).toContainText('Yourmine');
-      await expect(page.locator('header p')).toContainText('YouTube Audio Downloader');
+      await expect(page.locator('header p')).toContainText('audio, extracted');
     });
   });
 
@@ -24,7 +24,7 @@ test.describe('UI & Navigation Tests', () => {
 
     await test.step('Verify single mode is active by default', async () => {
       const singleBtn = page.getByRole('button', { name: 'Single download mode' });
-      await expect(singleBtn).toHaveClass(/active/);
+      await expect(singleBtn).toHaveAttribute('aria-pressed', 'true');
     });
   });
 
@@ -91,21 +91,21 @@ test.describe('UI & Navigation Tests', () => {
   test('should switch between Current and History tabs', async ({ page }) => {
     await test.step('Verify Current tab is active initially', async () => {
       const currentTab = page.getByRole('button', { name: /Current downloads/ });
-      await expect(currentTab).toHaveClass(/active/);
+      await expect(currentTab).toHaveAttribute('aria-pressed', 'true');
     });
 
     await test.step('Switch to History tab', async () => {
       const historyTab = page.getByRole('button', { name: /Download history/ });
       await historyTab.click();
-      await expect(historyTab).toHaveClass(/active/);
+      await expect(historyTab).toHaveAttribute('aria-pressed', 'true');
       const currentTab = page.getByRole('button', { name: /Current downloads/ });
-      await expect(currentTab).not.toHaveClass(/active/);
+      await expect(currentTab).toHaveAttribute('aria-pressed', 'false');
     });
 
     await test.step('Switch back to Current tab', async () => {
       const currentTab = page.getByRole('button', { name: /Current downloads/ });
       await currentTab.click();
-      await expect(currentTab).toHaveClass(/active/);
+      await expect(currentTab).toHaveAttribute('aria-pressed', 'true');
     });
   });
 

@@ -1,4 +1,5 @@
 export { default as Toast } from './Toast'
+export { default as Waveform } from './Waveform'
 export { default as DownloadCard } from './DownloadCard'
 export { default as FormatSelector } from './FormatSelector'
 export { default as ModeToggle } from './ModeToggle'

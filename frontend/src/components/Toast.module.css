@@ -1,0 +1,48 @@
+.toast {
+  position: fixed;
+  top: var(--space-5);
+  right: var(--space-5);
+  z-index: 100;
+  max-width: min(24rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--ink-faint);
+  font-size: var(--text-sm);
+  animation: rise 0.24s ease-out;
+}
+
+/* Same meter scale as the waveform, so a toast and a row agree on state. */
+.toast[data-type='success'] {
+  border-left-color: var(--landed);
+}
+
+.toast[data-type='error'] {
+  border-left-color: var(--clipped);
+}
+
+.toast[data-type='info'] {
+  border-left-color: var(--signal);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(-0.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 34rem) {
+  .toast {
+    top: auto;
+    bottom: var(--space-4);
+    left: var(--space-4);
+    right: var(--space-4);
+    max-width: none;
+  }
+}

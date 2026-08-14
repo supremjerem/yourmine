@@ -1,0 +1,64 @@
+.app {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--ink);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 700;
+  font-stretch: 78%;
+  letter-spacing: -0.035em;
+  line-height: 0.85;
+  text-transform: lowercase;
+}
+
+.tagline {
+  font-size: var(--text-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-bottom: var(--space-1);
+}
+
+.main {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.console {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 34rem) {
+  .app {
+    gap: var(--space-6);
+  }
+
+  .main {
+    gap: var(--space-6);
+  }
+
+  .controls {
+    gap: var(--space-4);
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

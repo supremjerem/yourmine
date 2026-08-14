@@ -5,13 +5,16 @@ services:
       dockerfile: Dockerfile.backend
     image: ghcr.io/supremjerem/yourmine-backend:latest
     container_name: yourmine-backend
+    # Published on loopback only: the API has no authentication.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ~/Downloads:/root/Downloads
-      - ./backend:/app/backend
+      - ~/Downloads:/home/yourmine/Downloads
     environment:
       - PYTHONUNBUFFERED=1
+      - YOURMINE_HOST=0.0.0.0
+      - YOURMINE_OUTPUT_DIR=/home/yourmine/Downloads
+      - YOURMINE_LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
@@ -26,25 +29,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        # Inlined into the bundle at build time, so it must be set here
+        # rather than as a runtime environment variable.
+        VITE_API_URL: http://localhost:8000
     image: ghcr.io/supremjerem/yourmine-frontend:latest
     container_name: yourmine-frontend
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/index.html:/app/index.html
+      - "127.0.0.1:3000:3000"
     depends_on:
       backend:
         condition: service_healthy
-    environment:
-      - VITE_API_URL=http://localhost:8000
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 5s
     networks:
       - yourmine-network
 

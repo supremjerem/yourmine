@@ -1,21 +1,35 @@
-FROM node:20-alpine
+# Build the static bundle.
+FROM node:24-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
+# `npm ci` installs exactly what the lockfile pins, unlike `npm install`.
 COPY frontend/package*.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
-
-# Copy frontend code
 COPY frontend/ .
 
-# Expose frontend port
+# Baked in at build time: Vite inlines VITE_* variables into the bundle.
+ARG VITE_API_URL=http://localhost:8000
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
+
+# Serve the built assets. The previous image ran the Vite dev server, which is
+# not meant to face anything but a developer's own machine.
+FROM nginx:1.27-alpine AS runtime
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+# nginx:alpine ships an unprivileged `nginx` user; point the pid and cache
+# directories at paths it can write to.
+RUN touch /var/run/nginx.pid \
+    && chown -R nginx:nginx /var/run/nginx.pid /var/cache/nginx /usr/share/nginx/html
+USER nginx
+
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --spider -q http://localhost:3000 || exit 1
 
-# Run Vite dev server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["nginx", "-g", "daemon off;"]

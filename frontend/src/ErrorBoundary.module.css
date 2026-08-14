@@ -1,0 +1,67 @@
+/*
+ * Uses the same tokens as the rest of the app. The previous version hardcoded
+ * light inline styles, so the crash screen looked broken in a dark theme.
+ */
+.boundary {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  max-width: 36rem;
+  margin: var(--space-8) auto;
+  padding: var(--space-6);
+  background: var(--paper);
+  border-left: 3px solid var(--clipped);
+  border-radius: var(--radius-lg);
+}
+
+.heading {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-stretch: 85%;
+  letter-spacing: -0.02em;
+}
+
+.body {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.details {
+  width: 100%;
+}
+
+.summary {
+  cursor: pointer;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.trace {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--paper-sunk);
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+}
+
+.action {
+  padding: var(--space-3) var(--space-5);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease;
+}
+
+.action:hover {
+  background: var(--signal);
+  color: var(--ink);
+}
