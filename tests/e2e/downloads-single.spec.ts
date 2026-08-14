@@ -88,7 +88,7 @@ test.describe('Single Download Tests', () => {
 
     await test.step('Verify download appears in history', async () => {
       const historyTab = page.getByRole('button', { name: /Download history/ });
-      await expect(historyTab).toContainText(/History \(\d+\)/);
+      await expect(historyTab).toContainText(/Earlier \d+/);
       await historyTab.click();
       await expect(page.locator('[data-testid="download-card"]').first()).toBeVisible();
     });

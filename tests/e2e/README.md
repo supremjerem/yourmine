@@ -3,19 +3,21 @@
 Playwright tests driving the real UI against a running backend. 26 tests across
 5 files.
 
-> **Known flakiness: two tests download from YouTube for real.**
+> **CI runs against a simulated downloader.**
 >
-> `should auto-move to history when completed` (downloads-single) and
-> `should clear all history when clicking Clear History button`
-> (feedback-validation) both wait for a download to *finish*, so they pass only
-> when YouTube actually serves the file. After a burst of runs YouTube starts
-> returning `HTTP 403 Forbidden` and those two fail with no code change
-> involved. Treat an isolated failure of those two as environmental and re-run.
+> YouTube answers datacenter IP addresses with "Sign in to confirm you're not a
+> bot", so a GitHub runner can never complete a real download. The CI job sets
+> `YOURMINE_FAKE_DOWNLOADS=1`, which swaps in `backend/fake_downloader.py`: it
+> reports the same progress sequence and writes a small placeholder file,
+> without touching the network.
 >
-> The durable fix is to let the backend run against a stub downloader under
-> test. The seam already exists — `DownloadService` takes its `download_fn` as a
-> constructor argument — so this only needs an environment variable selecting
-> which one `lifespan` wires up.
+> Two video IDs are treated as sentinels meaning "unavailable", so the tests
+> that assert on failure handling still work: any ID starting with `invalid`,
+> and any ID made of a single repeated character (`aaaaaaaaaaa`).
+>
+> Locally the suite uses the real downloader by default, so it still exercises
+> yt-dlp end to end. If YouTube rate-limits you (`HTTP 403`), run it the way CI
+> does: `YOURMINE_FAKE_DOWNLOADS=1 npx playwright test`.
 
 ## Files
 

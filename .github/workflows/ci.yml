@@ -110,6 +110,11 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run end-to-end tests
+        # YouTube answers datacenter IPs with "Sign in to confirm you're not a
+        # bot", so real downloads cannot succeed on a runner. The simulated
+        # downloader exercises the same code paths without the network.
+        env:
+          YOURMINE_FAKE_DOWNLOADS: '1'
         run: npx playwright test
 
       - name: Upload report

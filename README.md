@@ -13,7 +13,7 @@ CLI, and a Docker Compose stack.
 - Files land straight in `~/Downloads` — nothing is stored server-side
 - Download history kept per browser session
 - CLI for scripting and batch files
-- 91 backend unit tests, 71 frontend unit tests, 25 end-to-end tests
+- 111 backend unit tests, 71 frontend unit tests, 26 end-to-end tests
 
 ## Quick start with Docker
 
@@ -31,7 +31,7 @@ published on loopback only.
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
+- Node.js 22.22+ / 24.15+ / 26+ (jsdom and Vite set the floor)
 - FFmpeg
 
 ### Backend
@@ -80,6 +80,7 @@ All backend settings are environment variables with a `YOURMINE_` prefix. See
 | `YOURMINE_MAX_CONCURRENT_DOWNLOADS` | `3` | Downloads running at once |
 | `YOURMINE_MAX_STORED_JOBS` | `200` | Job history retained in memory |
 | `YOURMINE_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `YOURMINE_FAKE_DOWNLOADS` | `0` | **Tests only.** Simulates downloads instead of fetching them, so the E2E suite can run on CI where YouTube blocks datacenter IPs. A server with this set downloads nothing. |
 
 The frontend reads `VITE_API_URL` (see [`frontend/.env.example`](frontend/.env.example)).
 Vite inlines it at build time, so the Docker image takes it as a build argument.
@@ -175,7 +176,8 @@ of links to download several.
 - [x] Restrict downloads to YouTube hosts (SSRF fix)
 - [x] Layered backend with dependency injection and structured logging
 - [x] "Signal" visual redesign with the waveform progress meter
-- [ ] Enable branch protection on `main` (requires repo admin)
+- [x] Branch protection on `main`: PR required, CI must pass, no force-push
+- [x] Simulated downloader so the E2E suite is meaningful on CI
 - [ ] Cancel a download in progress
 - [ ] Choose the output directory from the UI
 - [ ] Optional playlist expansion behind an explicit flag

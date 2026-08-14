@@ -69,6 +69,11 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    # Test-only. Replaces the real downloader with a simulation that never
+    # touches the network, because CI runners are bot-blocked by YouTube.
+    # Enabling this outside tests means no audio is ever actually downloaded.
+    fake_downloads: bool = False
+
     def resolved_output_dir(self) -> Path:
         """Return the configured output directory, resolving it if unset."""
         return (

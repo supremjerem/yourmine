@@ -24,7 +24,7 @@ from backend.models import (
     DownloadListResponse,
     DownloadRequest,
 )
-from backend.service import DownloadService
+from backend.service import DownloadFn, DownloadService
 from backend.store import DownloadStore
 
 logger = logging.getLogger(__name__)
@@ -50,10 +50,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.service = DownloadService(
         store=store,
         output_dir=output_dir,
-        download_fn=download_audio,
+        download_fn=_select_downloader(),
         max_concurrent=settings.max_concurrent_downloads,
     )
     yield
+
+
+def _select_downloader() -> DownloadFn:
+    """
+    Pick the real downloader, or the simulation when tests ask for it.
+
+    This is the only place the fake can enter the application, and it announces
+    itself loudly, because a server running in this mode downloads nothing.
+    """
+    if not settings.fake_downloads:
+        return download_audio
+
+    from backend.fake_downloader import fake_download_audio
+
+    logger.warning(
+        "YOURMINE_FAKE_DOWNLOADS is enabled: downloads are SIMULATED and no "
+        "audio will be fetched. This is for tests only."
+    )
+    return fake_download_audio
 
 
 app = FastAPI(title="Yourmine API", version="2.0.0", lifespan=lifespan)
