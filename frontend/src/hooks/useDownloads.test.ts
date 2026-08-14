@@ -69,13 +69,19 @@ describe('starting a single download', () => {
     const { result } = renderHook(() => useDownloads(showToast))
 
     await act(async () => {
-      await result.current.startSingleDownload('  https://youtu.be/dQw4w9WgXcQ  ', 'wav')
+      await result.current.startSingleDownload(
+        '  https://youtu.be/dQw4w9WgXcQ  ',
+        'wav'
+      )
     })
 
-    expect(mockedAxios.post).toHaveBeenCalledWith(expect.stringContaining('/download'), {
-      url: 'https://youtu.be/dQw4w9WgXcQ',
-      format: 'wav'
-    })
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/download'),
+      {
+        url: 'https://youtu.be/dQw4w9WgXcQ',
+        format: 'wav'
+      }
+    )
   })
 
   it('should report success and add the job to the list', async () => {
@@ -84,7 +90,10 @@ describe('starting a single download', () => {
 
     let ok: boolean | undefined
     await act(async () => {
-      ok = await result.current.startSingleDownload('https://youtu.be/dQw4w9WgXcQ', 'mp3')
+      ok = await result.current.startSingleDownload(
+        'https://youtu.be/dQw4w9WgXcQ',
+        'mp3'
+      )
     })
 
     expect(ok).toBe(true)
@@ -97,7 +106,10 @@ describe('starting a single download', () => {
 
     let ok: boolean | undefined
     await act(async () => {
-      ok = await result.current.startSingleDownload('https://youtu.be/dQw4w9WgXcQ', 'mp3')
+      ok = await result.current.startSingleDownload(
+        'https://youtu.be/dQw4w9WgXcQ',
+        'mp3'
+      )
     })
 
     expect(ok).toBe(false)
@@ -132,7 +144,10 @@ describe('starting a batch download', () => {
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/download/batch'),
-      { urls: ['https://youtu.be/aaaaaaaaaaa', 'https://youtu.be/bbbbbbbbbbb'], format: 'mp3' }
+      {
+        urls: ['https://youtu.be/aaaaaaaaaaa', 'https://youtu.be/bbbbbbbbbbb'],
+        format: 'mp3'
+      }
     )
   })
 
@@ -142,7 +157,10 @@ describe('starting a batch download', () => {
 
     let ok: boolean | undefined
     await act(async () => {
-      ok = await result.current.startBatchDownload(['https://youtu.be/aaaaaaaaaaa'], 'mp3')
+      ok = await result.current.startBatchDownload(
+        ['https://youtu.be/aaaaaaaaaaa'],
+        'mp3'
+      )
     })
 
     expect(ok).toBe(false)

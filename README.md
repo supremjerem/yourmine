@@ -1,41 +1,32 @@
-# YourMine - YouTube Audio Downloader
+# Yourmine — YouTube Audio Downloader
 
-Web interface for downloading audio from YouTube videos and playlists.
+Paste a YouTube link, get an MP3 or WAV in your Downloads folder. Web interface,
+CLI, and a Docker Compose stack.
 
 ![Yourmine UI](docs/screenshot.png)
 
 ## Features
 
-- Download audio from YouTube videos
-- Batch download from playlists
-- Choose between MP3 (lossy) and WAV (lossless) formats
-- Real-time progress tracking
-- Conversion status monitoring
-- Direct download to ~/Downloads folder
-- Download history with localStorage persistence
-- Dark UI inspired by GitHub, with purple accents
-- Full E2E test coverage (25 tests)
-- Code quality checked with SonarQube (SonarLint)
+- Download audio from YouTube videos, one link or a list at a time
+- Choose between MP3 (192 kbps) and WAV (lossless)
+- Live progress: each download draws its own waveform as it fills
+- Files land straight in `~/Downloads` — nothing is stored server-side
+- Download history kept per browser session
+- CLI for scripting and batch files
+- 91 backend unit tests, 71 frontend unit tests, 25 end-to-end tests
 
-## Quick Start with Docker
-
-The easiest way to run YourMine is with Docker Compose:
+## Quick start with Docker
 
 ```bash
-# Start the application
-docker compose up
-
-# Rebuild after changes
-docker compose up --build
+docker compose up          # start
+docker compose up --build  # rebuild after changes
+docker compose down        # stop
 ```
 
-To stop the application:
+The UI is at http://localhost:3000. Both containers run as non-root and are
+published on loopback only.
 
-```bash
-docker compose down
-```
-
-## Development Setup (without Docker)
+## Development setup
 
 ### Prerequisites
 
@@ -48,7 +39,7 @@ docker compose down
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python -m backend.api
 ```
 
@@ -56,92 +47,139 @@ python -m backend.api
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-### Running Tests
+### Tests and checks
 
 ```bash
-# Install Playwright
-npx playwright install
+# Backend
+ruff check . && ruff format --check .
+pytest --cov=backend --cov-report=term-missing
 
-# Run all E2E tests
+# Frontend
+cd frontend
+npm run lint && npm run typecheck && npm run test && npm run build
+
+# End-to-end (starts both servers itself)
 npx playwright test
-
-# Run tests in UI mode
-npx playwright test --ui
 ```
 
-## Tech Stack
+## Configuration
 
-- **Backend**: FastAPI, yt-dlp, Python 3.11
-- **Frontend**: React 18, TypeScript, Vite 5
-- **Testing**: Playwright (25 E2E tests)
-- **Code Quality**: SonarQube / SonarLint
-- **Containerization**: Docker, Docker Compose
+All backend settings are environment variables with a `YOURMINE_` prefix. See
+[`.env.example`](.env.example) for the full list and defaults.
 
-## Project Structure
+| Variable | Default | Purpose |
+|---|---|---|
+| `YOURMINE_HOST` | `127.0.0.1` | Interface to bind. Loopback by default — the API has no authentication, so exposing it to a network is an explicit opt-in. |
+| `YOURMINE_PORT` | `8000` | Port to listen on |
+| `YOURMINE_OUTPUT_DIR` | auto | Where files are written. Unset auto-detects `~/Downloads`, then `~/Desktop`, then `~`. |
+| `YOURMINE_MAX_BATCH_SIZE` | `20` | Maximum URLs in one batch request |
+| `YOURMINE_MAX_CONCURRENT_DOWNLOADS` | `3` | Downloads running at once |
+| `YOURMINE_MAX_STORED_JOBS` | `200` | Job history retained in memory |
+| `YOURMINE_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
-```
-yourmine/
-├── backend/
-│   ├── api.py              # FastAPI application and REST endpoints
-│   └── downloader.py       # Core download and conversion logic
-├── frontend/
-│   └── src/
-│       ├── components/     # React UI components (TSX)
-│       ├── hooks/          # Custom React hooks (TS)
-│       ├── utils/          # Utility functions (TS)
-│       ├── types.ts        # Shared TypeScript type definitions
-│       ├── App.tsx         # Main application component
-│       └── main.tsx        # Entry point
-├── tests/
-│   └── e2e/                # Playwright E2E tests (TS)
-├── yourmine.py             # CLI tool
-├── docker-compose.yml      # Docker orchestration
-├── Dockerfile.backend      # Backend Docker image
-├── Dockerfile.frontend     # Frontend Docker image
-└── requirements.txt        # Python dependencies
-```
+The frontend reads `VITE_API_URL` (see [`frontend/.env.example`](frontend/.env.example)).
+Vite inlines it at build time, so the Docker image takes it as a build argument.
 
 ## Architecture
 
-- Downloads are saved directly to `~/Downloads` folder
-- No server-side file storage
-- Real-time progress tracking via polling
-- Status progression: queued → extracting → downloading → converting → completed
+```
+backend/
+  api.py          FastAPI routes only; dependencies wired with Depends()
+  service.py      Job orchestration, free of any HTTP concern
+  store.py        Thread-safe, size-capped job store with eviction
+  downloader.py   yt-dlp adapter
+  models.py       Request/response models + the DownloadState enum
+  validation.py   YouTube URL allowlist
+  config.py       Settings, read from the environment
+frontend/src/
+  components/     UI components, one CSS Module each
+  hooks/          useDownloads (polling, job state), useToast
+  utils/          Progress parsing and status mapping
+  styles/         Design tokens
+tests/
+  backend/        pytest suite
+  e2e/            Playwright suite
+docs/adr/         Architecture decision records
+```
 
-## API Endpoints
+- `DownloadState` in `backend/models.py` is the single source of truth for
+  status values; a test asserts the frontend's TypeScript union still matches.
+- Progress reaches the browser by polling — see
+  [ADR 0002](docs/adr/0002-polling-over-websockets.md).
+- Job history is in memory and bounded — see
+  [ADR 0001](docs/adr/0001-in-memory-job-store.md).
 
-- `POST /download` - Start a single download
-- `POST /download/batch` - Start batch downloads
-- `GET /downloads` - List all downloads with status
+## Security
 
-Full API documentation: http://localhost:8000/docs
+Yourmine is built for local, single-user use, and the defaults reflect that:
 
-## CLI Usage
+- **URLs are restricted to YouTube.** `yt-dlp`'s generic extractor will fetch
+  any host it is given, so the API validates every URL against an exact-host
+  allowlist and a video-ID check before the downloader sees it.
+- **The API binds to loopback** and has no authentication. Set `YOURMINE_HOST`
+  only if you understand that anyone who can reach the port can write files into
+  your output directory.
+- **Batch size and concurrency are capped** so a single request cannot exhaust
+  the process.
+- **Errors are sanitised** — the client gets a stable message, and the full
+  yt-dlp output goes to the server log.
 
-Download to current directory as MP3:
+If you plan to run this anywhere other than your own machine, add
+authentication, rate limiting, and per-session job scoping first.
+
+## API
+
+- `POST /download` — start one download
+- `POST /download/batch` — start several
+- `GET /downloads` — list all jobs, newest first
+
+Interactive docs: http://localhost:8000/docs
+
+## CLI
+
 ```bash
+# Single video to the current directory as MP3
 python yourmine.py https://www.youtube.com/watch?v=dQw4w9WgXcQ
-```
 
-Download to specific folder as WAV:
-```bash
+# Specific folder, lossless
 python yourmine.py https://youtu.be/dQw4w9WgXcQ --output ~/Music --format wav
-```
 
-Batch download from file:
-```bash
+# Batch from a file, 5 at a time
 python yourmine.py --file urls.txt --format wav --workers 5
 ```
 
-## Supported URL Formats
+## Supported link formats
 
-- `https://www.youtube.com/watch?v=VIDEO_ID`
-- `https://youtu.be/VIDEO_ID`
-- `https://www.youtube.com/watch?v=VIDEO_ID&list=PLAYLIST_ID`
+`youtube.com/watch?v=ID` · `youtu.be/ID` · `youtube.com/shorts/ID` ·
+`youtube.com/embed/ID` · `youtube.com/live/ID`, on `youtube.com`, `www`, `m`,
+and `music` hosts.
+
+Playlists are not expanded — each link downloads exactly one video. Pass a batch
+of links to download several.
+
+## Roadmap
+
+- [x] FastAPI backend with yt-dlp, MP3 and WAV output
+- [x] React + TypeScript frontend with live progress
+- [x] CLI with parallel batch downloads
+- [x] Docker Compose stack
+- [x] Playwright end-to-end suite
+- [x] Working ESLint + Prettier + Ruff toolchain
+- [x] Unit tests: pytest (backend) and Vitest (frontend)
+- [x] GitHub Actions CI, CodeQL, and Dependabot
+- [x] CD publishing images to GHCR
+- [x] Restrict downloads to YouTube hosts (SSRF fix)
+- [x] Layered backend with dependency injection and structured logging
+- [x] "Signal" visual redesign with the waveform progress meter
+- [ ] Enable branch protection on `main` (requires repo admin)
+- [ ] Cancel a download in progress
+- [ ] Choose the output directory from the UI
+- [ ] Optional playlist expansion behind an explicit flag
+- [ ] Persist history across restarts (revisits ADR 0001)
 
 ## License
 

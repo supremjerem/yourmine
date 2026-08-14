@@ -19,17 +19,19 @@ describe('DownloadCard', () => {
     expect(screen.getByText('Roygbiv')).toBeInTheDocument()
   })
 
-  it('should show the source url', () => {
+  it('should show the source url alongside a known title', () => {
+    render(<DownloadCard download={makeDownload({ title: 'Roygbiv' })} />)
+    expect(screen.getByText(/dQw4w9WgXcQ/)).toBeInTheDocument()
+  })
+
+  it('should fall back to the link as the heading before the title is known', () => {
     render(<DownloadCard download={makeDownload()} />)
+    // Shown once as the heading, not repeated in the readout below.
     expect(screen.getByText(/dQw4w9WgXcQ/)).toBeInTheDocument()
   })
 
   it('should expose progress to assistive technology', () => {
-    render(
-      <DownloadCard
-        download={makeDownload({ progress: { percent: '63.0%' } })}
-      />
-    )
+    render(<DownloadCard download={makeDownload({ progress: { percent: '63.0%' } })} />)
 
     const bar = screen.getByRole('progressbar')
     expect(bar).toHaveAttribute('aria-valuenow', '63')
@@ -60,5 +62,24 @@ describe('DownloadCard', () => {
   it('should show the chosen audio format', () => {
     render(<DownloadCard download={makeDownload({ format: 'wav' })} />)
     expect(screen.getByText(/WAV/i)).toBeInTheDocument()
+  })
+
+  it('should fill the waveform completely once the file is saved', () => {
+    const { container } = render(
+      <DownloadCard download={makeDownload({ status: 'completed' })} />
+    )
+    const bars = container.querySelectorAll('rect')
+    const lit = container.querySelectorAll('rect[data-lit]')
+
+    expect(lit.length).toBe(bars.length)
+  })
+
+  it('should not claim progress a failed download never made', () => {
+    // A failed job used to render a fully lit waveform, implying it finished.
+    const { container } = render(
+      <DownloadCard download={makeDownload({ status: 'failed', error: 'nope' })} />
+    )
+
+    expect(container.querySelectorAll('rect[data-lit]').length).toBe(0)
   })
 })

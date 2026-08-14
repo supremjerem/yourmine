@@ -1,4 +1,6 @@
 import DownloadCard from './DownloadCard'
+import Waveform from './Waveform'
+import styles from './DownloadsList.module.css'
 import type { Download, ViewMode } from '../types'
 
 interface DownloadsListProps {
@@ -16,62 +18,71 @@ function DownloadsList({
   onViewModeChange,
   onClearHistory
 }: DownloadsListProps) {
-  const displayedDownloads =
-    viewMode === 'current' ? currentDownloads : historyDownloads
+  const showingCurrent = viewMode === 'current'
+  const displayed = showingCurrent ? currentDownloads : historyDownloads
 
   return (
-    <div className="downloads-list">
-      <div className="downloads-header">
-        <h2>Downloads</h2>
-        <fieldset className="view-toggle" aria-label="Downloads view selection">
+    <section className={styles.section}>
+      <header className={styles.header}>
+        <h2 className={styles.heading}>Downloads</h2>
+
+        <fieldset className={styles.tabs} aria-label="Downloads view selection">
           <button
-            className={viewMode === 'current' ? 'active' : ''}
+            className={styles.tab}
+            data-active={showingCurrent || undefined}
             onClick={() => onViewModeChange('current')}
-            aria-pressed={viewMode === 'current'}
+            aria-pressed={showingCurrent}
             aria-label={`Current downloads (${currentDownloads.length})`}
             type="button"
           >
-            Current ({currentDownloads.length})
+            This session <span className={styles.count}>{currentDownloads.length}</span>
           </button>
           <button
-            className={viewMode === 'history' ? 'active' : ''}
+            className={styles.tab}
+            data-active={!showingCurrent || undefined}
             onClick={() => onViewModeChange('history')}
-            aria-pressed={viewMode === 'history'}
+            aria-pressed={!showingCurrent}
             aria-label={`Download history (${historyDownloads.length})`}
             type="button"
           >
-            History ({historyDownloads.length})
+            Earlier <span className={styles.count}>{historyDownloads.length}</span>
           </button>
         </fieldset>
-      </div>
+      </header>
 
-      {viewMode === 'history' && historyDownloads.length > 0 && (
-        <div className="clear-history-container">
+      {!showingCurrent && historyDownloads.length > 0 && (
+        <div className={styles.tools}>
           <button
-            className="clear-history-btn"
+            className={styles.clear}
             onClick={onClearHistory}
             aria-label="Clear all download history"
             type="button"
           >
-            Clear History
+            Clear earlier
           </button>
         </div>
       )}
 
-      {displayedDownloads.length === 0 ? (
-        <p className="empty-state">
-          {viewMode === 'current'
-            ? 'No active downloads. Start by adding a URL above!'
-            : 'No download history yet.'}
-        </p>
+      {displayed.length === 0 ? (
+        /* The empty state is a silent waveform: present, just nothing on it. */
+        <div className={styles.empty} data-testid="empty-state">
+          <div className={styles.emptyMeter}>
+            <Waveform seed="no-signal" progress={0} tone="idle" flat />
+          </div>
+          <p className={styles.emptyText}>
+            {showingCurrent
+              ? 'Nothing ripping yet. Paste a link above to start.'
+              : 'Nothing from earlier sessions.'}
+          </p>
+        </div>
       ) : (
-        <div className="downloads-grid">
-          {displayedDownloads.map((download) => (
+        <div className={styles.rows}>
+          {displayed.map((download) => (
             <DownloadCard key={download.id} download={download} />
           ))}
         </div>
       )}
-    </div>
+    </section>
   )
 }
 

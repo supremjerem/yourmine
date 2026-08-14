@@ -1,0 +1,60 @@
+.waveform {
+  display: block;
+  width: 100%;
+  height: 1.875rem;
+}
+
+.bar {
+  fill: var(--bar-unlit);
+  transition: fill 0.35s ease;
+}
+
+/* Lit bars take the meter colour for the current state. */
+.waveform[data-tone='signal'] .bar[data-lit] {
+  fill: var(--signal);
+}
+
+.waveform[data-tone='landed'] .bar[data-lit] {
+  fill: var(--landed);
+}
+
+.waveform[data-tone='clipped'] .bar[data-lit] {
+  fill: var(--clipped);
+}
+
+/* A queued or empty waveform is present but unlit — loaded, not playing. */
+.waveform[data-tone='idle'] .bar {
+  fill: var(--bar-unlit);
+}
+
+/*
+ * The playhead: the first unlit bar after the lit run pulses, so an active
+ * download reads as moving even between progress updates.
+ */
+.waveform[data-tone='signal'] .bar[data-lit] + .bar:not([data-lit]) {
+  fill: var(--signal-text);
+  animation: playhead 1.1s ease-in-out infinite;
+}
+
+@keyframes playhead {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waveform[data-tone='signal'] .bar[data-lit] + .bar:not([data-lit]) {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 40rem) {
+  .waveform {
+    height: 1.75rem;
+  }
+}

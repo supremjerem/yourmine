@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import styles from './ErrorBoundary.module.css'
 import type { ErrorInfo, ReactNode } from 'react'
 
 interface ErrorBoundaryProps {
@@ -24,55 +25,37 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     console.error('Error caught by boundary:', error, errorInfo)
   }
 
+  handleReload = () => {
+    // A full reload rather than clearing the flag: whatever state produced the
+    // crash is still in memory, so retrying in place tends to fail again.
+    window.location.reload()
+  }
+
   render() {
-    if (this.state.hasError) {
-      return (
-        <div
-          style={{
-            padding: '40px',
-            textAlign: 'center',
-            backgroundColor: '#fee',
-            borderRadius: '8px',
-            margin: '20px'
-          }}
-        >
-          <h2>Something went wrong</h2>
-          <details style={{ marginTop: '20px', textAlign: 'left' }}>
-            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-              Error details
-            </summary>
-            <pre
-              style={{
-                marginTop: '10px',
-                padding: '10px',
-                backgroundColor: '#fff',
-                borderRadius: '4px',
-                overflow: 'auto'
-              }}
-            >
-              {this.state.error?.message}
-            </pre>
-          </details>
-          <button
-            onClick={() => this.setState({ hasError: false, error: null })}
-            style={{
-              marginTop: '20px',
-              padding: '10px 20px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            Try again
-          </button>
-        </div>
-      )
+    if (!this.state.hasError) {
+      return this.props.children
     }
 
-    return this.props.children
+    return (
+      <div className={styles.boundary} role="alert">
+        <h1 className={styles.heading}>Yourmine stopped</h1>
+        <p className={styles.body}>
+          Something went wrong and the page could not carry on. Reloading usually clears
+          it.
+        </p>
+
+        {this.state.error?.message && (
+          <details className={styles.details}>
+            <summary className={styles.summary}>Technical detail</summary>
+            <pre className={styles.trace}>{this.state.error.message}</pre>
+          </details>
+        )}
+
+        <button className={styles.action} onClick={this.handleReload} type="button">
+          Reload
+        </button>
+      </div>
+    )
   }
 }
 

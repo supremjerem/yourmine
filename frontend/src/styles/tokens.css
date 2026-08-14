@@ -1,0 +1,64 @@
+/**
+ * Design tokens — "Signal".
+ *
+ * The palette is an audio meter's own scale: signal amber while a job is
+ * moving, green when it lands, red when it clips. Colour carries state here,
+ * it does not decorate. Everything else is paper and ink so the meter is the
+ * only saturated thing on the page.
+ *
+ * Each meter colour has two values: a saturated one for the waveform, and a
+ * darker `-text` variant for labels. The bright versions sit between 2.6:1 and
+ * 4:1 on bone, which is fine for a large block of colour and not fine for
+ * 11px uppercase type; every `-text` variant clears WCAG AA (4.5:1).
+ */
+
+:root {
+  /* Surfaces */
+  --bone: #e9e7e2;
+  --paper: #f5f4f1;
+  --paper-sunk: #e2e0da;
+
+  /* Ink — all AA or better on bone */
+  --ink: #1a1917; /* 14.2:1 */
+  --ink-soft: #55524c; /*  6.3:1 */
+  --ink-faint: #625e57; /*  5.2:1 */
+
+  /* Structure */
+  --rule: #cfcbc2;
+  --rule-strong: #b3aea3;
+
+  /* Meter scale — these are states, not accents */
+  --bar-unlit: #dbd8d1;
+  --signal: #e09400;
+  --signal-text: #8a5a00; /*  4.8:1 */
+  --landed: #2e7d5b;
+  --landed-text: #1d5c41; /*  6.4:1 */
+  --clipped: #d64027;
+  --clipped-text: #a32b16; /*  5.8:1 */
+
+  /* Type */
+  --font-display: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-display: clamp(2.5rem, 9vw, 4.25rem);
+
+  /* Spacing — 4px base */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  --radius: 2px;
+  --radius-lg: 3px;
+
+  --focus-ring: 0 0 0 2px var(--bone), 0 0 0 4px var(--signal-text);
+}

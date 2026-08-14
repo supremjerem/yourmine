@@ -45,6 +45,11 @@ function readClearedIds(): Set<string> {
   }
 }
 
+/** Confirmation wording shared by the single and batch paths. */
+function queuedMessage(count: number): string {
+  return `Queued ${count} download${count === 1 ? '' : 's'}`
+}
+
 /** Persist cleared IDs, ignoring quota or serialization failures. */
 function writeClearedIds(ids: Set<string>): void {
   try {
@@ -105,10 +110,8 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
         newDownloads.forEach((d) => {
           const prev = previousDownloads.get(d.id)
           if (prev && prev.status !== 'completed' && d.status === 'completed') {
-            showToastRef.current(
-              `✅ ${d.title} downloaded to your Downloads folder!`,
-              'success'
-            )
+            // Same word the row's own state label uses, so the two agree.
+            showToastRef.current(`Saved ${d.title} to Downloads`, 'success')
           }
         })
 
@@ -164,7 +167,7 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
 
         setSessionDownloadIds((prev) => new Set([...prev, response.data.id]))
         setDownloads((prev) => [response.data, ...prev])
-        showToastRef.current('Download started!', 'success')
+        showToastRef.current(queuedMessage(1), 'success')
         return true
       } catch (error) {
         showToastRef.current('Error: ' + toErrorMessage(error), 'error')
@@ -195,7 +198,7 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
           `${API_URL}/downloads`
         )
         setDownloads(response.data.downloads)
-        showToastRef.current(`${urlList.length} downloads started!`, 'success')
+        showToastRef.current(queuedMessage(urlList.length), 'success')
         return true
       } catch (error) {
         showToastRef.current('Error: ' + toErrorMessage(error), 'error')
@@ -220,14 +223,12 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
     const knownIds = new Set(currentDl.map((d) => d.id))
 
     setClearedIds((prev) => {
-      const next = new Set(
-        [...prev, ...historyIds].filter((id) => knownIds.has(id))
-      )
+      const next = new Set([...prev, ...historyIds].filter((id) => knownIds.has(id)))
       writeClearedIds(next)
       return next
     })
 
-    showToastRef.current('History cleared', 'success')
+    showToastRef.current('Earlier downloads cleared', 'success')
   }, [sessionDownloadIds])
 
   const currentDownloads = useMemo(

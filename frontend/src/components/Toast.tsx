@@ -1,3 +1,4 @@
+import styles from './Toast.module.css'
 import type { ToastType } from '../types'
 
 interface ToastProps {
@@ -7,7 +8,13 @@ interface ToastProps {
 
 function Toast({ message, type = 'info' }: ToastProps) {
   return (
-    <div className={`toast toast-${type}`} role="alert" aria-live="polite">
+    <div
+      className={styles.toast}
+      data-type={type}
+      data-testid={`toast-${type}`}
+      role="alert"
+      aria-live="polite"
+    >
       {message}
     </div>
   )

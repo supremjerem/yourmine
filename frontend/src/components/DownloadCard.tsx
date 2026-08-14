@@ -1,67 +1,87 @@
 import { memo } from 'react'
+import Waveform from './Waveform'
 import {
-  parsePercent,
   cleanSpeed,
-  getStatusColor,
-  getStatusIcon
+  getStatusLabel,
+  getStatusTone,
+  isTerminal,
+  parsePercent,
+  parseProgressFraction
 } from '../utils/downloadStatus'
+import styles from './DownloadCard.module.css'
 import type { Download } from '../types'
 
 interface DownloadCardProps {
   readonly download: Download
 }
 
+/** Strip the scheme and trailing parameters so the row shows the useful part. */
+function shortenUrl(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?/, '').split('&')[0]
+}
+
 function DownloadCard({ download }: DownloadCardProps) {
+  const tone = getStatusTone(download.status)
+  const label = getStatusLabel(download.status)
+  const percent = parsePercent(download.progress?.percent)
+  const speed = cleanSpeed(download.progress?.speed)
+  const finished = isTerminal(download.status)
+  const hasProgress = Boolean(download.progress?.percent)
+
+  // A saved download settles to a fully lit waveform — that settled shape is
+  // the completion mark, which is why there is no separate status icon. A
+  // failed one stays lit only as far as it actually got, so the meter never
+  // claims progress that did not happen.
+  const fraction =
+    download.status === 'completed'
+      ? 1
+      : parseProgressFraction(download.progress?.percent)
+  const showsProgress = hasProgress && !finished
+
+  // Before the title is known the link stands in as the heading, so repeating
+  // it in the readout below would say the same thing twice.
+  const source = shortenUrl(download.url)
+  const hasTitle = Boolean(download.title)
+
   return (
-    <div className="download-card">
-      <div className="download-header">
-        <span className="status-icon" aria-label={`Status: ${download.status}`}>
-          {getStatusIcon(download.status)}
+    <article className={styles.row} data-testid="download-card">
+      <header className={styles.head}>
+        <h3 className={styles.title}>{download.title ?? source}</h3>
+        <span className={styles.state} data-tone={tone} data-testid="status-badge">
+          {label}
         </span>
-        <span
-          className="status-badge"
-          style={{ backgroundColor: getStatusColor(download.status) }}
-        >
-          {download.status}
-        </span>
+      </header>
+
+      <div
+        className={styles.meter}
+        role={showsProgress ? 'progressbar' : undefined}
+        aria-valuenow={showsProgress ? Number.parseFloat(percent) : undefined}
+        aria-valuemin={showsProgress ? 0 : undefined}
+        aria-valuemax={showsProgress ? 100 : undefined}
+        aria-label={showsProgress ? `Download progress: ${percent}` : undefined}
+      >
+        <Waveform seed={download.id} progress={fraction} tone={tone} />
       </div>
 
-      <div className="download-body">
-        <h3>{download.title || 'Processing...'}</h3>
-        <p className="download-url">{download.url}</p>
-        <p className="download-format">Format: {download.format.toUpperCase()}</p>
+      <footer className={styles.readout}>
+        <span className={styles.format} data-testid="download-format">
+          {download.format.toUpperCase()}
+        </span>
+        {/* Kept in the flow even when empty: it is the flexible column that
+            pushes the numeric readout to the right edge. */}
+        <span className={styles.source}>{hasTitle ? source : null}</span>
+        <span className={styles.numbers}>
+          {showsProgress && <span>{percent}</span>}
+          {showsProgress && speed && <span>{speed}</span>}
+        </span>
+      </footer>
 
-        {download.progress?.percent && (
-          <div className="progress-container">
-            <div
-              className="progress-bar-wrapper"
-              role="progressbar"
-              aria-valuenow={Number.parseFloat(parsePercent(download.progress.percent))}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Download progress: ${parsePercent(download.progress.percent)}`}
-            >
-              <div
-                className="progress-bar-fill"
-                style={{ width: parsePercent(download.progress.percent) }}
-              />
-            </div>
-            <div className="progress-details">
-              <span>{parsePercent(download.progress.percent)}</span>
-              {cleanSpeed(download.progress.speed) && (
-                <span>{cleanSpeed(download.progress.speed)}</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {download.error && (
-          <p className="error-message" role="alert">
-            {download.error}
-          </p>
-        )}
-      </div>
-    </div>
+      {download.error && (
+        <p className={styles.error} role="alert" data-testid="error-message">
+          {download.error}
+        </p>
+      )}
+    </article>
   )
 }
 

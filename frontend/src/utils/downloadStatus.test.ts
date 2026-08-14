@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { cleanSpeed, getStatusColor, getStatusIcon, parsePercent } from './downloadStatus'
+import {
+  cleanSpeed,
+  getStatusLabel,
+  getStatusTone,
+  isTerminal,
+  parsePercent,
+  parseProgressFraction
+} from './downloadStatus'
 
 describe('parsePercent', () => {
   it('should strip the ANSI colour codes yt-dlp emits', () => {
@@ -39,21 +46,66 @@ describe('cleanSpeed', () => {
   })
 })
 
-describe('getStatusColor', () => {
-  it('should return a distinct colour for each known status', () => {
-    const colors = (
-      ['queued', 'downloading', 'completed', 'failed'] as const
-    ).map(getStatusColor)
-    expect(new Set(colors).size).toBeGreaterThan(1)
+describe('parseProgressFraction', () => {
+  it('should convert a percentage into a 0-1 fraction', () => {
+    expect(parseProgressFraction('63.0%')).toBeCloseTo(0.63)
   })
 
-  it('should return a colour for every status', () => {
-    expect(getStatusColor('converting')).toMatch(/^var\(--|^#/)
+  it('should return zero when nothing has been reported', () => {
+    expect(parseProgressFraction(undefined)).toBe(0)
+  })
+
+  it('should clamp to one so the waveform cannot overfill', () => {
+    expect(parseProgressFraction('140%')).toBe(1)
   })
 })
 
-describe('getStatusIcon', () => {
-  it('should return a label for a known status', () => {
-    expect(getStatusIcon('completed')).toBeTruthy()
+describe('getStatusTone', () => {
+  it('should light the meter amber while a download is moving', () => {
+    expect(getStatusTone('downloading')).toBe('signal')
+    expect(getStatusTone('converting')).toBe('signal')
+  })
+
+  it('should settle to green when the file lands', () => {
+    expect(getStatusTone('completed')).toBe('landed')
+  })
+
+  it('should show red when a download fails', () => {
+    expect(getStatusTone('failed')).toBe('clipped')
+  })
+
+  it('should leave a queued download unlit', () => {
+    expect(getStatusTone('queued')).toBe('idle')
+  })
+})
+
+describe('getStatusLabel', () => {
+  it('should name states for the user, not the state machine', () => {
+    expect(getStatusLabel('completed')).toBe('Saved')
+    expect(getStatusLabel('extracting')).toBe('Reading')
+  })
+
+  it('should have a label for every status', () => {
+    const statuses = [
+      'queued',
+      'processing',
+      'extracting',
+      'downloading',
+      'converting',
+      'completed',
+      'failed'
+    ] as const
+    statuses.forEach((status) => expect(getStatusLabel(status)).toBeTruthy())
+  })
+})
+
+describe('isTerminal', () => {
+  it('should treat saved and failed as final', () => {
+    expect(isTerminal('completed')).toBe(true)
+    expect(isTerminal('failed')).toBe(true)
+  })
+
+  it('should treat in-flight states as not final', () => {
+    expect(isTerminal('downloading')).toBe(false)
   })
 })

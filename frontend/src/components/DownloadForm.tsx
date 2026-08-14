@@ -1,3 +1,4 @@
+import styles from './DownloadForm.module.css'
 import type { FormEvent } from 'react'
 import type { DownloadMode } from '../types'
 
@@ -22,37 +23,48 @@ function DownloadForm({
 }: DownloadFormProps) {
   const isSingleMode = mode === 'single'
   const isDisabled = loading || (isSingleMode ? !url.trim() : !urls.trim())
-  const buttonLabel = loading
-    ? 'Starting...'
-    : isSingleMode
-      ? 'Download'
-      : 'Download All'
+  const action = isSingleMode ? 'Rip' : 'Rip all'
 
   return (
-    <form onSubmit={onSubmit} className="download-form">
+    <form onSubmit={onSubmit} className={styles.form}>
       {isSingleMode ? (
-        <input
-          type="url"
-          placeholder="Paste YouTube URL here..."
-          value={url}
-          onChange={(e) => onUrlChange(e.target.value)}
-          disabled={loading}
-          aria-label="YouTube URL input"
-          autoComplete="url"
-        />
+        <div className={styles.field}>
+          <input
+            className={styles.input}
+            type="url"
+            placeholder="Paste a YouTube link"
+            value={url}
+            onChange={(e) => onUrlChange(e.target.value)}
+            disabled={loading}
+            aria-label="YouTube URL input"
+            autoComplete="url"
+          />
+          <button className={styles.action} type="submit" disabled={isDisabled}>
+            {loading ? 'Starting' : action}
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
       ) : (
-        <textarea
-          placeholder="Paste multiple YouTube URLs (one per line)&#10;# Comments starting with # are ignored"
-          value={urls}
-          onChange={(e) => onUrlsChange(e.target.value)}
-          rows={6}
-          disabled={loading}
-          aria-label="YouTube URLs batch input"
-        />
+        <>
+          <textarea
+            className={styles.textarea}
+            placeholder={'One link per line\nLines starting with # are skipped'}
+            value={urls}
+            onChange={(e) => onUrlsChange(e.target.value)}
+            rows={6}
+            disabled={loading}
+            aria-label="YouTube URLs batch input"
+          />
+          <button
+            className={`${styles.action} ${styles.actionBlock}`}
+            type="submit"
+            disabled={isDisabled}
+          >
+            {loading ? 'Starting' : action}
+            <span aria-hidden="true">→</span>
+          </button>
+        </>
       )}
-      <button type="submit" disabled={isDisabled}>
-        {buttonLabel}
-      </button>
     </form>
   )
 }

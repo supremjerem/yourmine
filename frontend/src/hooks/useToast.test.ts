@@ -14,7 +14,9 @@ describe('useToast', () => {
   it('should show the message it was given', () => {
     const { result } = renderHook(() => useToast())
 
-    act(() => result.current.showToast('Download started', 'success'))
+    act(() => {
+      result.current.showToast('Download started', 'success')
+    })
 
     expect(result.current.toast).toEqual({
       message: 'Download started',
@@ -25,7 +27,9 @@ describe('useToast', () => {
   it('should default to the info type', () => {
     const { result } = renderHook(() => useToast())
 
-    act(() => result.current.showToast('Heads up'))
+    act(() => {
+      result.current.showToast('Heads up')
+    })
 
     expect(result.current.toast?.type).toBe('info')
   })
@@ -33,8 +37,12 @@ describe('useToast', () => {
   it('should hide the toast after the configured duration', () => {
     const { result } = renderHook(() => useToast(3000))
 
-    act(() => result.current.showToast('Gone soon'))
-    act(() => vi.advanceTimersByTime(3000))
+    act(() => {
+      result.current.showToast('Gone soon')
+    })
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
 
     expect(result.current.toast).toBeNull()
   })
@@ -42,10 +50,18 @@ describe('useToast', () => {
   it('should replace an existing toast rather than queueing behind it', () => {
     const { result } = renderHook(() => useToast(3000))
 
-    act(() => result.current.showToast('First'))
-    act(() => vi.advanceTimersByTime(1500))
-    act(() => result.current.showToast('Second'))
-    act(() => vi.advanceTimersByTime(1500))
+    act(() => {
+      result.current.showToast('First')
+    })
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+    act(() => {
+      result.current.showToast('Second')
+    })
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
 
     // The first toast's timer must not clear the second one early.
     expect(result.current.toast?.message).toBe('Second')

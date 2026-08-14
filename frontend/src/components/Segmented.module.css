@@ -1,0 +1,122 @@
+/*
+ * Shared segmented control: a row of mono labels separated by hairlines, with
+ * the active one marked by a signal underline rather than a filled pill.
+ */
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.legend {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.option {
+  position: relative;
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  transition: color 0.2s ease;
+}
+
+.option::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.option:hover {
+  color: var(--ink-soft);
+}
+
+.option[data-active] {
+  color: var(--ink);
+}
+
+.option[data-active]::after {
+  background: var(--signal-text);
+}
+
+/*
+ * Radio-based variant: the input drives state, the label carries the mark.
+ *
+ * The input is stretched transparently over its label rather than clipped to a
+ * single pixel. It stays a real radio for assistive technology, keeps the whole
+ * label clickable, and — unlike a clipped input — still has a hit box.
+ */
+.radioOption {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.radioOption input {
+  position: absolute;
+  inset: 0;
+  /* Above .mark, which is positioned (for its underline) and comes later in
+     the DOM, so it would otherwise paint over the input and swallow clicks. */
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+.radioOption .mark {
+  position: relative;
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  transition: color 0.2s ease;
+}
+
+.radioOption .mark::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.radioOption:hover .mark {
+  color: var(--ink-soft);
+}
+
+.radioOption input:checked + .mark {
+  color: var(--ink);
+}
+
+.radioOption input:checked + .mark::after {
+  background: var(--signal-text);
+}
+
+.radioOption input:focus-visible + .mark {
+  box-shadow: var(--focus-ring);
+}
+
+.qualifier {
+  color: var(--ink-faint);
+}
+
+@media (max-width: 34rem) {
+  .group {
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+}
