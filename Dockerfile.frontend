@@ -16,7 +16,7 @@ RUN npm run build
 
 # Serve the built assets. The previous image ran the Vite dev server, which is
 # not meant to face anything but a developer's own machine.
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.30-alpine AS runtime
 
 # GHCR links a package to its repository when the image carries this
 # label, which is what lets the repository's GITHUB_TOKEN push to it.
