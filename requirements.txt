@@ -1,5 +1,8 @@
 # Core dependencies
-yt-dlp>=2024.0.0
+# Pinned exactly (rather than >=) so Dependabot opens a PR every time YouTube
+# changes something upstream and a bump is needed, and so CI's Docker layer
+# cache can't silently keep serving a stale, broken extractor.
+yt-dlp==2026.8.19
 
 # API Backend (FastAPI)
 fastapi>=0.115.0
