@@ -55,7 +55,9 @@ updates:
     commit-message:
       prefix: 'ci'
     groups:
-      actions-dependencies: {}
+      actions-dependencies:
+        patterns:
+          - '*'
 
   - package-ecosystem: docker
     directories:
