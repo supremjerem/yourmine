@@ -8,6 +8,13 @@ updates:
     commit-message:
       prefix: 'build'
     open-pull-requests-limit: 5
+    groups:
+      # One PR per week for every pip bump instead of one per package.
+      # yt-dlp is excluded: it needs to stand alone so a broken release
+      # doesn't get merged bundled in with unrelated, harmless bumps.
+      pip-dependencies:
+        exclude-patterns:
+          - 'yt-dlp'
 
   - package-ecosystem: npm
     directory: /frontend
@@ -20,6 +27,14 @@ updates:
       # Lint and test tooling churns often and rarely needs individual review.
       dev-tooling:
         dependency-type: development
+      # Runtime deps still get individual review, but major bumps (e.g. a
+      # React major version) are split out so they don't block or get
+      # dragged in by unrelated patch/minor bumps.
+      frontend-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: npm
     directory: /
@@ -27,6 +42,11 @@ updates:
       interval: weekly
     commit-message:
       prefix: 'build'
+    groups:
+      root-dependencies:
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
@@ -34,6 +54,8 @@ updates:
       interval: weekly
     commit-message:
       prefix: 'ci'
+    groups:
+      actions-dependencies: {}
 
   - package-ecosystem: docker
     directories:
@@ -42,3 +64,8 @@ updates:
       interval: weekly
     commit-message:
       prefix: 'build'
+    groups:
+      docker-dependencies:
+        update-types:
+          - minor
+          - patch
