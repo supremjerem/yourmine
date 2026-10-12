@@ -147,3 +147,37 @@ jobs:
             fi
             echo "$image runs as $user"
           done
+
+      # Building proves the image assembles; it does not prove it serves.
+      # A healthcheck that addressed `localhost` shipped broken because this
+      # job only ever built.
+      - name: Verify images actually serve and report healthy
+        run: |
+          docker run -d --name ym-backend -p 8000:8000 yourmine-backend:ci
+          docker run -d --name ym-frontend -p 3000:3000 yourmine-frontend:ci
+
+          for _ in $(seq 1 40); do
+            backend=$(docker inspect ym-backend --format '{{.State.Health.Status}}')
+            frontend=$(docker inspect ym-frontend --format '{{.State.Health.Status}}')
+            echo "backend=$backend frontend=$frontend"
+            if [ "$backend" = healthy ] && [ "$frontend" = healthy ]; then
+              healthy=1
+              break
+            fi
+            sleep 3
+          done
+
+          if [ "${healthy:-}" != 1 ]; then
+            echo "::error::containers never reported healthy"
+            docker logs ym-backend
+            docker logs ym-frontend
+            exit 1
+          fi
+
+          curl -fsS http://localhost:8000/ > /dev/null
+          curl -fsS http://localhost:3000/ | grep -q '<div id="root">'
+          echo "both containers serve and report healthy"
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f ym-backend ym-frontend 2>/dev/null || true
