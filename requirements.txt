@@ -8,4 +8,4 @@ yt-dlp==2026.8.19
 fastapi>=0.115.0
 uvicorn[standard]>=0.52.1
 pydantic>=2.0.0
-pydantic-settings>=2.0.0
+pydantic-settings>=2.15.0
