@@ -8,4 +8,4 @@ pytest-asyncio>=1.4.0
 httpx>=0.28.1          # required by fastapi.testclient
 
 # Linting and formatting
-ruff>=0.16.10
+ruff>=0.17.0
