@@ -7,13 +7,13 @@ CLI, and a Docker Compose stack.
 
 ## Features
 
-- Download audio from YouTube videos, one link or a list at a time
+- Download audio from YouTube videos, one link, a list, or a whole playlist
 - Choose between MP3 (192 kbps) and WAV (lossless)
 - Live progress: each download draws its own waveform as it fills
 - Files land straight in `~/Downloads` — nothing is stored server-side
 - Download history kept per browser session
 - CLI for scripting and batch files
-- 111 backend unit tests, 71 frontend unit tests, 26 end-to-end tests
+- 162 backend unit tests, 87 frontend unit tests, 29 end-to-end tests
 
 ## Quick start with Docker
 
@@ -83,6 +83,7 @@ All backend settings are environment variables with a `YOURMINE_` prefix. See
 | `YOURMINE_PORT` | `8000` | Port to listen on |
 | `YOURMINE_OUTPUT_DIR` | auto | Where files are written. Unset auto-detects `~/Downloads`, then `~/Desktop`, then `~`. |
 | `YOURMINE_MAX_BATCH_SIZE` | `20` | Maximum URLs in one batch request |
+| `YOURMINE_MAX_PLAYLIST_SIZE` | `50` | Maximum videos taken from one playlist |
 | `YOURMINE_MAX_CONCURRENT_DOWNLOADS` | `3` | Downloads running at once |
 | `YOURMINE_MAX_STORED_JOBS` | `200` | Job history retained in memory |
 | `YOURMINE_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
@@ -130,8 +131,8 @@ Yourmine is built for local, single-user use, and the defaults reflect that:
 - **The API binds to loopback** and has no authentication. Set `YOURMINE_HOST`
   only if you understand that anyone who can reach the port can write files into
   your output directory.
-- **Batch size and concurrency are capped** so a single request cannot exhaust
-  the process.
+- **Batch size, playlist size and concurrency are capped** so a single request
+  cannot exhaust the process.
 - **Errors are sanitised** — the client gets a stable message, and the full
   yt-dlp output goes to the server log.
 
@@ -142,6 +143,7 @@ authentication, rate limiting, and per-session job scoping first.
 
 - `POST /download` — start one download
 - `POST /download/batch` — start several
+- `POST /download/playlist` — start every video of a playlist (capped)
 - `GET /downloads` — list all jobs, newest first
 
 Interactive docs: http://localhost:8000/docs
@@ -165,8 +167,11 @@ python yourmine.py --file urls.txt --format wav --workers 5
 `youtube.com/embed/ID` · `youtube.com/live/ID`, on `youtube.com`, `www`, `m`,
 and `music` hosts.
 
-Playlists are not expanded — each link downloads exactly one video. Pass a batch
-of links to download several.
+Playlist pages (`youtube.com/playlist?list=ID`) are expanded into one download
+per video, up to `YOURMINE_MAX_PLAYLIST_SIZE` (50 by default); if a playlist is
+longer, the rest is skipped and the UI says so. A watch link that merely carries
+a `list` parameter downloads that single video only. The CLI does not expand
+playlists — pass it one video link per download.
 
 ## Roadmap
 
@@ -186,7 +191,8 @@ of links to download several.
 - [x] Simulated downloader so the E2E suite is meaningful on CI
 - [ ] Cancel a download in progress
 - [ ] Choose the output directory from the UI
-- [ ] Optional playlist expansion behind an explicit flag
+- [x] Playlist downloads in the web UI, capped at 50 videos
+- [ ] Playlist expansion in the CLI
 - [ ] Persist history across restarts (revisits ADR 0001)
 
 ## License

@@ -7,10 +7,15 @@ import pytest
 
 from backend.downloader import download_audio
 from backend.fake_downloader import (
+    ERROR_PLAYLIST_UNAVAILABLE,
     ERROR_UNAVAILABLE,
+    FAKE_PLAYLIST_SIZE,
     _simulates_failure,
     fake_download_audio,
+    fake_list_playlist_videos,
 )
+from backend.playlist import PlaylistExpansionError
+from backend.validation import is_valid_youtube_url
 
 URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
@@ -147,3 +152,32 @@ class TestOutputDirectoryFailure:
             result = fake_download_audio(URL, str(tmp_path), "mp3")
 
         assert result["success"] is False
+
+
+def _playlist_url(playlist_id: str) -> str:
+    return f"https://www.youtube.com/playlist?list={playlist_id}"
+
+
+class TestFakePlaylistExpansion:
+    def test_should_return_a_small_fixed_playlist(self):
+        contents = fake_list_playlist_videos(_playlist_url("PLabcdefghij"), limit=50)
+
+        assert len(contents.video_urls) == FAKE_PLAYLIST_SIZE
+        assert contents.truncated is False
+
+    def test_should_return_urls_the_real_validator_accepts(self):
+        contents = fake_list_playlist_videos(_playlist_url("PLabcdefghij"), limit=50)
+
+        assert all(is_valid_youtube_url(url) for url in contents.video_urls)
+
+    def test_should_pretend_to_be_longer_than_the_limit_for_long_playlists(self):
+        contents = fake_list_playlist_videos(_playlist_url("PLlongabcdef"), limit=5)
+
+        assert len(contents.video_urls) == 5
+        assert contents.truncated is True
+
+    def test_should_report_invalid_playlists_as_unavailable(self):
+        with pytest.raises(PlaylistExpansionError) as error:
+            fake_list_playlist_videos(_playlist_url("invalidabcdef"), limit=50)
+
+        assert str(error.value) == ERROR_PLAYLIST_UNAVAILABLE

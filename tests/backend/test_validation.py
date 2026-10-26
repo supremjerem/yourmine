@@ -4,11 +4,14 @@ import pytest
 
 from backend.validation import (
     InvalidYouTubeUrlError,
+    extract_playlist_id,
     extract_video_id,
+    is_playlist_url,
     is_valid_youtube_url,
 )
 
 VIDEO_ID = "dQw4w9WgXcQ"
+PLAYLIST_ID = "PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf"
 
 
 class TestAcceptsRealYouTubeUrls:
@@ -111,3 +114,66 @@ class TestIsValidYouTubeUrl:
 
     def test_should_return_false_instead_of_raising_for_invalid_url(self):
         assert is_valid_youtube_url("http://192.168.1.1/") is False
+
+
+class TestExtractPlaylistId:
+    @pytest.mark.parametrize(
+        "url",
+        [
+            f"https://www.youtube.com/playlist?list={PLAYLIST_ID}",
+            f"https://youtube.com/playlist?list={PLAYLIST_ID}",
+            f"https://m.youtube.com/playlist?list={PLAYLIST_ID}",
+            f"https://music.youtube.com/playlist?list={PLAYLIST_ID}",
+            f"https://www.youtube.com/playlist/?list={PLAYLIST_ID}",
+            f"https://www.youtube.com/playlist?list={PLAYLIST_ID}&si=abc",
+        ],
+    )
+    def test_should_extract_playlist_id_from_supported_url_forms(self, url):
+        assert extract_playlist_id(url) == PLAYLIST_ID
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://192.168.1.1/playlist?list=PLrAXtmErZgOeiKm4sg",
+            "https://evil.example.com/playlist?list=PLrAXtmErZgOeiKm4sg",
+            "https://youtube.com.attacker.tld/playlist?list=PLrAXtmErZgOeiKm4sg",
+            "file:///etc/passwd",
+        ],
+    )
+    def test_should_reject_non_youtube_hosts(self, url):
+        with pytest.raises(InvalidYouTubeUrlError):
+            extract_playlist_id(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://www.youtube.com/playlist",
+            "https://www.youtube.com/playlist?list=",
+            "https://www.youtube.com/playlist?list=short",
+            "https://www.youtube.com/playlist?list=WL",
+            "https://www.youtube.com/playlist?list=bad!chars!in!id!",
+            f"https://www.youtube.com/playlist?list={'a' * 65}",
+            f"https://youtu.be/playlist?list={PLAYLIST_ID}",
+        ],
+    )
+    def test_should_reject_urls_without_a_valid_playlist_id(self, url):
+        with pytest.raises(InvalidYouTubeUrlError):
+            extract_playlist_id(url)
+
+    def test_should_not_treat_a_watch_url_with_a_list_parameter_as_a_playlist(self):
+        url = f"https://www.youtube.com/watch?v={VIDEO_ID}&list={PLAYLIST_ID}"
+
+        with pytest.raises(InvalidYouTubeUrlError):
+            extract_playlist_id(url)
+
+    def test_should_not_accept_a_playlist_url_as_a_video_url(self):
+        with pytest.raises(InvalidYouTubeUrlError):
+            extract_video_id(f"https://www.youtube.com/playlist?list={PLAYLIST_ID}")
+
+
+class TestIsPlaylistUrl:
+    def test_should_return_true_for_a_playlist_url(self):
+        assert is_playlist_url(f"https://www.youtube.com/playlist?list={PLAYLIST_ID}")
+
+    def test_should_return_false_for_a_video_url(self):
+        assert is_playlist_url(f"https://youtu.be/{VIDEO_ID}") is False

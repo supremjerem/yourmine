@@ -16,14 +16,17 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import Settings, configure_logging
-from backend.downloader import download_audio
+from backend.downloader import download_audio, list_playlist_videos
 from backend.models import (
     BatchDownloadRequest,
     BatchDownloadResponse,
     DownloadJob,
     DownloadListResponse,
     DownloadRequest,
+    PlaylistDownloadRequest,
+    PlaylistDownloadResponse,
 )
+from backend.playlist import PlaylistExpandFn, PlaylistExpansionError
 from backend.service import DownloadFn, DownloadService
 from backend.store import DownloadStore
 
@@ -51,6 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         store=store,
         output_dir=output_dir,
         download_fn=_select_downloader(),
+        expand_playlist_fn=_select_playlist_expander(),
         max_concurrent=settings.max_concurrent_downloads,
     )
     yield
@@ -73,6 +77,16 @@ def _select_downloader() -> DownloadFn:
         "audio will be fetched. This is for tests only."
     )
     return fake_download_audio
+
+
+def _select_playlist_expander() -> PlaylistExpandFn:
+    """Pick the playlist expander matching the selected downloader."""
+    if not settings.fake_downloads:
+        return list_playlist_videos
+
+    from backend.fake_downloader import fake_list_playlist_videos
+
+    return fake_list_playlist_videos
 
 
 app = FastAPI(title="Yourmine API", version="2.0.0", lifespan=lifespan)
@@ -169,6 +183,46 @@ async def create_batch_download(
         batch_id=str(uuid.uuid4()),
         download_ids=[job.id for job in jobs],
         total=len(jobs),
+    )
+
+
+@app.post("/download/playlist", response_model=PlaylistDownloadResponse)
+async def create_playlist_download(
+    request: PlaylistDownloadRequest,
+    service: ServiceDep,
+) -> PlaylistDownloadResponse:
+    """
+    Start a download for every video in a playlist.
+
+    The playlist is expanded into one job per video, capped at the configured
+    playlist size. Jobs then run like a batch, bounded by the concurrency limit.
+
+    Args:
+        request: The playlist request containing URL and format.
+        service: The download orchestration service.
+
+    Returns:
+        The created download IDs, and whether the playlist was cut at the cap.
+
+    Raises:
+        HTTPException: 422 if the playlist cannot be read or has no videos.
+    """
+    try:
+        playlist = await service.expand_playlist(
+            request.url, settings.max_playlist_size
+        )
+    except PlaylistExpansionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    jobs = [service.create_job(url, request.format) for url in playlist.video_urls]
+    for job in jobs:
+        service.schedule(job)
+
+    return PlaylistDownloadResponse(
+        batch_id=str(uuid.uuid4()),
+        download_ids=[job.id for job in jobs],
+        total=len(jobs),
+        truncated=playlist.truncated,
     )
 
 
