@@ -59,6 +59,7 @@ class Settings(BaseSettings):
 
     # Caps that keep a single request from exhausting the process.
     max_batch_size: int = 20
+    max_playlist_size: int = 50
     max_concurrent_downloads: int = 3
     max_stored_jobs: int = 200
 

@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 from backend.models import AudioFormat, DownloadJob, DownloadProgress, DownloadState
+from backend.playlist import PlaylistContents, PlaylistExpandFn, PlaylistExpansionError
 from backend.store import DownloadStore
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class DownloadService:
         output_dir: Path,
         download_fn: DownloadFn,
         max_concurrent: int = 3,
+        expand_playlist_fn: PlaylistExpandFn | None = None,
     ) -> None:
         """
         Args:
@@ -46,10 +48,13 @@ class DownloadService:
             output_dir: Directory finished files are written to.
             download_fn: The blocking download implementation to run.
             max_concurrent: Ceiling on simultaneous downloads.
+            expand_playlist_fn: Blocking function listing a playlist's videos.
+                Playlist downloads are unavailable when it is not given.
         """
         self._store = store
         self._output_dir = output_dir
         self._download_fn = download_fn
+        self._expand_playlist_fn = expand_playlist_fn
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._tasks: set[asyncio.Task] = set()
 
@@ -64,6 +69,19 @@ class DownloadService:
         )
         self._store.add(job)
         return job
+
+    async def expand_playlist(self, url: str, limit: int) -> PlaylistContents:
+        """
+        List the videos in a playlist, off the event loop.
+
+        Raises:
+            PlaylistExpansionError: If playlists are unsupported or unreadable.
+        """
+        if self._expand_playlist_fn is None:
+            raise PlaylistExpansionError("Playlist downloads are not available")
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._expand_playlist_fn, url, limit)
 
     def schedule(self, job: DownloadJob) -> None:
         """Start processing a job in the background."""
