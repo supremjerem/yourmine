@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios'
 import type { Download, AudioFormat, ToastType } from '../types'
+import { isPlaylistUrl } from '../utils/youtubeUrl'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -48,6 +49,12 @@ function readClearedIds(): Set<string> {
 /** Confirmation wording shared by the single and batch paths. */
 function queuedMessage(count: number): string {
   return `Queued ${count} download${count === 1 ? '' : 's'}`
+}
+
+/** Confirmation for a playlist, which says so when the cap cut it short. */
+function playlistQueuedMessage(count: number, truncated: boolean): string {
+  const queued = queuedMessage(count)
+  return truncated ? `${queued} — playlist cut at ${count} videos` : queued
 }
 
 /** Persist cleared IDs, ignoring quota or serialization failures. */
@@ -156,8 +163,45 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
     }
   }, [])
 
+  const startPlaylistDownload = useCallback(
+    async (url: string, format: AudioFormat): Promise<boolean> => {
+      setLoading(true)
+      try {
+        const playlistResponse = await axios.post<{
+          download_ids: string[]
+          total: number
+          truncated: boolean
+        }>(`${API_URL}/download/playlist`, {
+          url: url.trim(),
+          format
+        })
+
+        const { download_ids: newIds, total, truncated } = playlistResponse.data
+        setSessionDownloadIds((prev) => new Set([...prev, ...newIds]))
+
+        const response = await axios.get<{ downloads: Download[] }>(
+          `${API_URL}/downloads`
+        )
+        setDownloads(response.data.downloads)
+        showToastRef.current(playlistQueuedMessage(total, truncated), 'success')
+        return true
+      } catch (error) {
+        showToastRef.current('Error: ' + toErrorMessage(error), 'error')
+        return false
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
   const startSingleDownload = useCallback(
     async (url: string, format: AudioFormat): Promise<boolean> => {
+      // One input serves both: a playlist link fans out into many jobs.
+      if (isPlaylistUrl(url)) {
+        return startPlaylistDownload(url, format)
+      }
+
       setLoading(true)
       try {
         const response = await axios.post<Download>(`${API_URL}/download`, {
@@ -176,7 +220,7 @@ export function useDownloads(showToast: ShowToastFn): UseDownloadsReturn {
         setLoading(false)
       }
     },
-    []
+    [startPlaylistDownload]
   )
 
   const startBatchDownload = useCallback(

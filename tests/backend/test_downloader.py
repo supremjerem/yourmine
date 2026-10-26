@@ -7,13 +7,17 @@ import yt_dlp
 
 from backend.downloader import (
     ERROR_EXTRACT,
+    ERROR_PLAYLIST_UNAVAILABLE,
+    ERROR_PLAYLIST_UNEXPECTED,
     ERROR_UNAVAILABLE,
     ERROR_UNEXPECTED,
     _build_postprocessors,
     _make_progress_hook,
     _resolve_filename,
     download_audio,
+    list_playlist_videos,
 )
+from backend.playlist import PlaylistExpansionError
 
 URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
@@ -158,3 +162,116 @@ class TestDownloadAudio:
             download_audio(URL, "/custom/dir", "mp3")
 
             assert mock_ydl.call_args[0][0]["outtmpl"].startswith("/custom/dir")
+
+
+PLAYLIST_URL = (
+    "https://www.youtube.com/playlist?list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf"
+)
+
+
+def _playlist_info(*video_ids):
+    return {"entries": [{"id": video_id} for video_id in video_ids]}
+
+
+class TestListPlaylistVideos:
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_return_a_watch_url_for_each_video(self, mock_ydl):
+        mock_ydl.return_value.__enter__.return_value.extract_info.return_value = (
+            _playlist_info("aaaaaaaaaaa", "bbbbbbbbbbb")
+        )
+
+        contents = list_playlist_videos(PLAYLIST_URL, limit=10)
+
+        assert contents.video_urls == [
+            "https://www.youtube.com/watch?v=aaaaaaaaaaa",
+            "https://www.youtube.com/watch?v=bbbbbbbbbbb",
+        ]
+        assert contents.truncated is False
+
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_cap_the_list_and_flag_truncation(self, mock_ydl):
+        mock_ydl.return_value.__enter__.return_value.extract_info.return_value = (
+            _playlist_info("aaaaaaaaaaa", "bbbbbbbbbbb", "ccccccccccc")
+        )
+
+        contents = list_playlist_videos(PLAYLIST_URL, limit=2)
+
+        assert len(contents.video_urls) == 2
+        assert contents.truncated is True
+
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_not_flag_truncation_when_playlist_is_exactly_the_limit(
+        self, mock_ydl
+    ):
+        mock_ydl.return_value.__enter__.return_value.extract_info.return_value = (
+            _playlist_info("aaaaaaaaaaa", "bbbbbbbbbbb")
+        )
+
+        contents = list_playlist_videos(PLAYLIST_URL, limit=2)
+
+        assert contents.truncated is False
+
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_ask_yt_dlp_for_one_more_than_the_limit(self, mock_ydl):
+        mock_ydl.return_value.__enter__.return_value.extract_info.return_value = (
+            _playlist_info("aaaaaaaaaaa")
+        )
+
+        list_playlist_videos(PLAYLIST_URL, limit=50)
+
+        options = mock_ydl.call_args.args[0]
+        assert options["playlistend"] == 51
+        assert options["extract_flat"] == "in_playlist"
+
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_skip_unavailable_and_malformed_entries(self, mock_ydl):
+        mock_ydl.return_value.__enter__.return_value.extract_info.return_value = {
+            "entries": [None, {"id": "bad"}, {}, {"id": "aaaaaaaaaaa"}]
+        }
+
+        contents = list_playlist_videos(PLAYLIST_URL, limit=10)
+
+        assert contents.video_urls == ["https://www.youtube.com/watch?v=aaaaaaaaaaa"]
+
+    @pytest.mark.parametrize("info", [None, {}, {"entries": []}, {"entries": [None]}])
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_raise_when_the_playlist_has_no_usable_videos(self, mock_ydl, info):
+        mock_ydl.return_value.__enter__.return_value.extract_info.return_value = info
+
+        with pytest.raises(PlaylistExpansionError) as error:
+            list_playlist_videos(PLAYLIST_URL, limit=10)
+
+        assert str(error.value) == ERROR_PLAYLIST_UNAVAILABLE
+
+    @pytest.mark.parametrize(
+        ("exception", "expected_message"),
+        [
+            (yt_dlp.utils.DownloadError("boom"), ERROR_PLAYLIST_UNAVAILABLE),
+            (yt_dlp.utils.ExtractorError("boom"), ERROR_PLAYLIST_UNAVAILABLE),
+            (RuntimeError("boom"), ERROR_PLAYLIST_UNEXPECTED),
+        ],
+    )
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_raise_a_user_facing_message_for_each_failure(
+        self, mock_ydl, exception, expected_message
+    ):
+        mock_ydl.return_value.__enter__.return_value.extract_info.side_effect = (
+            exception
+        )
+
+        with pytest.raises(PlaylistExpansionError) as error:
+            list_playlist_videos(PLAYLIST_URL, limit=10)
+
+        assert str(error.value) == expected_message
+
+    @patch("backend.downloader.yt_dlp.YoutubeDL")
+    def test_should_not_leak_raw_exception_text(self, mock_ydl):
+        secret = "/Users/someone/private/path/cookies.txt"
+        mock_ydl.return_value.__enter__.return_value.extract_info.side_effect = (
+            yt_dlp.utils.DownloadError(f"failed reading {secret}")
+        )
+
+        with pytest.raises(PlaylistExpansionError) as error:
+            list_playlist_videos(PLAYLIST_URL, limit=10)
+
+        assert secret not in str(error.value)

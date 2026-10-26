@@ -130,6 +130,101 @@ describe('starting a single download', () => {
   })
 })
 
+describe('starting a playlist download', () => {
+  const playlistUrl =
+    'https://www.youtube.com/playlist?list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf'
+
+  it('should send a playlist link to the playlist endpoint', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: { download_ids: ['a', 'b'], total: 2, truncated: false }
+    })
+    const { result } = renderHook(() => useDownloads(showToast))
+
+    await act(async () => {
+      await result.current.startSingleDownload(`  ${playlistUrl}  `, 'wav')
+    })
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/download/playlist'),
+      { url: playlistUrl, format: 'wav' }
+    )
+  })
+
+  it('should not send a watch link carrying a list parameter to the playlist endpoint', async () => {
+    mockedAxios.post.mockResolvedValue({ data: makeDownload() })
+    const { result } = renderHook(() => useDownloads(showToast))
+
+    await act(async () => {
+      await result.current.startSingleDownload(
+        `https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf`,
+        'mp3'
+      )
+    })
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.not.stringContaining('/playlist'),
+      expect.anything()
+    )
+  })
+
+  it('should queue every video as part of this session and report the count', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: { download_ids: ['a', 'b'], total: 2, truncated: false }
+    })
+    mockedAxios.get.mockResolvedValue({
+      data: {
+        downloads: [makeDownload({ id: 'a' }), makeDownload({ id: 'b' })]
+      }
+    })
+    const { result } = renderHook(() => useDownloads(showToast))
+
+    let started = false
+    await act(async () => {
+      started = await result.current.startSingleDownload(playlistUrl, 'mp3')
+    })
+
+    expect(started).toBe(true)
+    expect(result.current.currentDownloads).toHaveLength(2)
+    expect(showToast).toHaveBeenCalledWith('Queued 2 downloads', 'success')
+  })
+
+  it('should tell the user when the playlist was cut short', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: { download_ids: ['a', 'b'], total: 2, truncated: true }
+    })
+    const { result } = renderHook(() => useDownloads(showToast))
+
+    await act(async () => {
+      await result.current.startSingleDownload(playlistUrl, 'mp3')
+    })
+
+    expect(showToast).toHaveBeenCalledWith(
+      'Queued 2 downloads — playlist cut at 2 videos',
+      'success'
+    )
+  })
+
+  it('should surface the backend error when the playlist cannot be read', async () => {
+    mockedAxios.isAxiosError.mockReturnValue(true)
+    mockedAxios.post.mockRejectedValue({
+      message: 'Request failed',
+      response: { data: { detail: 'Playlist unavailable, private, or empty' } }
+    })
+    const { result } = renderHook(() => useDownloads(showToast))
+
+    let started = true
+    await act(async () => {
+      started = await result.current.startSingleDownload(playlistUrl, 'mp3')
+    })
+
+    expect(started).toBe(false)
+    expect(showToast).toHaveBeenCalledWith(
+      'Error: Playlist unavailable, private, or empty',
+      'error'
+    )
+  })
+})
+
 describe('starting a batch download', () => {
   it('should post every url in the batch', async () => {
     mockedAxios.post.mockResolvedValue({ data: { download_ids: ['a', 'b'] } })

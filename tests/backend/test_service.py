@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from backend.models import AudioFormat, DownloadState
+from backend.playlist import PlaylistContents, PlaylistExpansionError
 from backend.service import DownloadService
 from backend.store import DownloadStore
 
@@ -15,7 +16,7 @@ URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
 
 def build_service(
-    download_fn, max_concurrent: int = 3
+    download_fn, max_concurrent: int = 3, expand_playlist_fn=None
 ) -> tuple[DownloadService, DownloadStore]:
     """Wire a service against a fresh store and the given download function."""
     store = DownloadStore(max_jobs=100)
@@ -24,6 +25,7 @@ def build_service(
         output_dir=Path(tempfile.mkdtemp()),
         download_fn=download_fn,
         max_concurrent=max_concurrent,
+        expand_playlist_fn=expand_playlist_fn,
     )
     return service, store
 
@@ -136,3 +138,36 @@ class TestConcurrencyLimit:
         await asyncio.gather(*(service._process(j.id, j.url, j.format) for j in jobs))
 
         assert peak <= 2
+
+
+class TestExpandPlaylist:
+    def test_should_return_what_the_expander_found(self, successful_download):
+        calls = []
+
+        def expand(url, limit):
+            calls.append((url, limit))
+            return PlaylistContents(video_urls=[URL], truncated=False)
+
+        service, _ = build_service(successful_download, expand_playlist_fn=expand)
+
+        contents = asyncio.run(service.expand_playlist("playlist-url", 7))
+
+        assert contents.video_urls == [URL]
+        assert calls == [("playlist-url", 7)]
+
+    def test_should_propagate_expansion_errors(self, successful_download):
+        def expand(url, limit):
+            raise PlaylistExpansionError("nope")
+
+        service, _ = build_service(successful_download, expand_playlist_fn=expand)
+
+        with pytest.raises(PlaylistExpansionError, match="nope"):
+            asyncio.run(service.expand_playlist("playlist-url", 7))
+
+    def test_should_refuse_playlists_when_no_expander_is_configured(
+        self, successful_download
+    ):
+        service, _ = build_service(successful_download)
+
+        with pytest.raises(PlaylistExpansionError):
+            asyncio.run(service.expand_playlist("playlist-url", 7))

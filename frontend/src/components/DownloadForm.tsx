@@ -32,7 +32,7 @@ function DownloadForm({
           <input
             className={styles.input}
             type="url"
-            placeholder="Paste a YouTube link"
+            placeholder="Paste a YouTube link or playlist"
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
             disabled={loading}

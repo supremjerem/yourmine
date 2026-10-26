@@ -7,22 +7,46 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.api import app, get_service, get_store
+from backend.playlist import PlaylistContents, PlaylistExpansionError
 from backend.service import DownloadService
 from backend.store import DownloadStore
 
 VALID_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 OTHER_URL = "https://youtu.be/oHg5SJYRHA0"
+PLAYLIST_URL = (
+    "https://www.youtube.com/playlist?list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf"
+)
 
 
 @pytest.fixture
-def client(successful_download):
+def expanded_playlist():
+    """What the fake expander returns; tests replace `contents` to vary it."""
+    return {
+        "contents": PlaylistContents(
+            video_urls=[VALID_URL, OTHER_URL], truncated=False
+        ),
+        "calls": [],
+    }
+
+
+@pytest.fixture
+def client(successful_download, expanded_playlist):
     """A TestClient whose service uses a fake downloader and a fresh store."""
+
+    def expand(url, limit):
+        expanded_playlist["calls"].append((url, limit))
+        contents = expanded_playlist["contents"]
+        if isinstance(contents, Exception):
+            raise contents
+        return contents
+
     store = DownloadStore(max_jobs=100)
     service = DownloadService(
         store=store,
         output_dir=Path(tempfile.mkdtemp()),
         download_fn=successful_download,
         max_concurrent=3,
+        expand_playlist_fn=expand,
     )
 
     app.dependency_overrides[get_store] = lambda: store
@@ -112,6 +136,81 @@ class TestBatchDownload:
             "/download/batch",
             json={"urls": [VALID_URL, "http://192.168.1.1/"], "format": "mp3"},
         )
+        assert response.status_code == 422
+
+
+class TestPlaylistDownload:
+    def test_should_create_one_job_per_video_in_the_playlist(self, client):
+        response = client.post(
+            "/download/playlist", json={"url": PLAYLIST_URL, "format": "wav"}
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total"] == 2
+        assert len(body["download_ids"]) == 2
+        assert body["truncated"] is False
+
+        jobs = client.get("/downloads").json()["downloads"]
+        assert {job["url"] for job in jobs} == {VALID_URL, OTHER_URL}
+        assert {job["format"] for job in jobs} == {"wav"}
+
+    def test_should_default_to_mp3_when_no_format_given(self, client):
+        client.post("/download/playlist", json={"url": PLAYLIST_URL})
+
+        jobs = client.get("/downloads").json()["downloads"]
+
+        assert {job["format"] for job in jobs} == {"mp3"}
+
+    def test_should_ask_the_expander_for_the_configured_maximum(
+        self, client, expanded_playlist
+    ):
+        client.post("/download/playlist", json={"url": PLAYLIST_URL})
+
+        assert expanded_playlist["calls"] == [(PLAYLIST_URL, 50)]
+
+    def test_should_report_when_the_playlist_was_truncated(
+        self, client, expanded_playlist
+    ):
+        expanded_playlist["contents"] = PlaylistContents(
+            video_urls=[VALID_URL], truncated=True
+        )
+
+        response = client.post("/download/playlist", json={"url": PLAYLIST_URL})
+
+        assert response.json()["truncated"] is True
+
+    def test_should_return_422_with_the_message_when_expansion_fails(
+        self, client, expanded_playlist
+    ):
+        expanded_playlist["contents"] = PlaylistExpansionError("Playlist unavailable")
+
+        response = client.post("/download/playlist", json={"url": PLAYLIST_URL})
+
+        assert response.status_code == 422
+        assert response.json()["detail"] == "Playlist unavailable"
+        assert client.get("/downloads").json()["total"] == 0
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            VALID_URL,
+            "http://192.168.1.1/playlist?list=PLrAXtmErZgOeiKm4sg",
+            "https://evil.example.com/playlist?list=PLrAXtmErZgOeiKm4sg",
+            "https://www.youtube.com/playlist?list=WL",
+        ],
+    )
+    def test_should_reject_urls_that_are_not_youtube_playlists(
+        self, client, expanded_playlist, url
+    ):
+        response = client.post("/download/playlist", json={"url": url})
+
+        assert response.status_code == 422
+        assert expanded_playlist["calls"] == []
+
+    def test_should_not_accept_a_playlist_url_on_the_single_endpoint(self, client):
+        response = client.post("/download", json={"url": PLAYLIST_URL})
+
         assert response.status_code == 422
 
 

@@ -10,7 +10,11 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, Field
 
-from backend.validation import InvalidYouTubeUrlError, extract_video_id
+from backend.validation import (
+    InvalidYouTubeUrlError,
+    extract_playlist_id,
+    extract_video_id,
+)
 
 
 class DownloadState(StrEnum):
@@ -54,6 +58,23 @@ YouTubeUrl = Annotated[
 ]
 
 
+def _validate_youtube_playlist_url(url: str) -> str:
+    """Pydantic validator wrapper for playlist URLs."""
+    try:
+        extract_playlist_id(url)
+    except InvalidYouTubeUrlError as exc:
+        raise ValueError(str(exc)) from exc
+    return url
+
+
+# A URL string proven to point at a YouTube playlist before it reaches yt-dlp.
+YouTubePlaylistUrl = Annotated[
+    str,
+    Field(max_length=2048),
+    AfterValidator(_validate_youtube_playlist_url),
+]
+
+
 class DownloadRequest(BaseModel):
     """Request body for a single download."""
 
@@ -67,6 +88,13 @@ class BatchDownloadRequest(BaseModel):
     # The cap is enforced here so an oversized batch is rejected before any
     # work is scheduled. The runtime limit lives in Settings.max_batch_size.
     urls: list[YouTubeUrl] = Field(min_length=1)
+    format: AudioFormat = AudioFormat.MP3
+
+
+class PlaylistDownloadRequest(BaseModel):
+    """Request body for downloading every video of a playlist."""
+
+    url: YouTubePlaylistUrl
     format: AudioFormat = AudioFormat.MP3
 
 
@@ -100,6 +128,13 @@ class BatchDownloadResponse(BaseModel):
     batch_id: str
     download_ids: list[str]
     total: int
+
+
+class PlaylistDownloadResponse(BatchDownloadResponse):
+    """Result of scheduling a playlist."""
+
+    # True when the playlist was longer than the cap and the rest was skipped.
+    truncated: bool
 
 
 class DownloadListResponse(BaseModel):

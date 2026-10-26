@@ -11,6 +11,9 @@ from pathlib import Path
 
 import yt_dlp
 
+from backend.playlist import PlaylistContents, PlaylistExpansionError
+from backend.validation import VIDEO_ID_PATTERN
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_MP3_QUALITY: str = "192"
@@ -20,6 +23,8 @@ DEFAULT_MP3_QUALITY: str = "192"
 ERROR_UNAVAILABLE = "Video unavailable, private, or region-restricted"
 ERROR_EXTRACT = "Could not read this video's details"
 ERROR_UNEXPECTED = "Download failed unexpectedly"
+ERROR_PLAYLIST_UNAVAILABLE = "Playlist unavailable, private, or empty"
+ERROR_PLAYLIST_UNEXPECTED = "Could not read this playlist"
 
 
 def _build_postprocessors(audio_format: str) -> list[dict]:
@@ -184,3 +189,59 @@ def download_audio(
     except Exception:
         logger.exception("Unexpected error downloading %s", youtube_url)
         return {"success": False, "error": ERROR_UNEXPECTED, "url": youtube_url}
+
+
+def list_playlist_videos(playlist_url: str, limit: int) -> PlaylistContents:
+    """
+    List the videos in a YouTube playlist without downloading anything.
+
+    Asks yt-dlp for one entry more than `limit` so a playlist that is exactly
+    `limit` long can be told apart from one that was cut short.
+
+    Args:
+        playlist_url: A validated YouTube playlist URL.
+        limit: Maximum number of videos to return.
+
+    Returns:
+        The video URLs found (at most `limit`) and whether the list was cut.
+
+    Raises:
+        PlaylistExpansionError: If the playlist cannot be read or has no
+            downloadable videos. The message is safe to show to users.
+    """
+    ydl_opts = {
+        # Flat extraction reads the playlist page only, not each video page.
+        "extract_flat": "in_playlist",
+        "playlistend": limit + 1,
+        "skip_download": True,
+        "quiet": True,
+        "no_warnings": True,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(playlist_url, download=False)
+    except yt_dlp.utils.YoutubeDLError as exc:
+        logger.warning("yt-dlp playlist error for %s: %s", playlist_url, exc)
+        raise PlaylistExpansionError(ERROR_PLAYLIST_UNAVAILABLE) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error reading playlist %s", playlist_url)
+        raise PlaylistExpansionError(ERROR_PLAYLIST_UNEXPECTED) from exc
+
+    # Unavailable videos come back as None or without a usable ID. Rebuilding
+    # the URL from a validated ID keeps entry URLs from yt-dlp out of the queue.
+    video_ids = [
+        entry["id"]
+        for entry in (info or {}).get("entries") or []
+        if entry and VIDEO_ID_PATTERN.match(str(entry.get("id", "")))
+    ]
+    if not video_ids:
+        raise PlaylistExpansionError(ERROR_PLAYLIST_UNAVAILABLE)
+
+    return PlaylistContents(
+        video_urls=[
+            f"https://www.youtube.com/watch?v={video_id}"
+            for video_id in video_ids[:limit]
+        ],
+        truncated=len(video_ids) > limit,
+    )
